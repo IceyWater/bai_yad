@@ -1,43 +1,56 @@
+export 'features/subscriptions/presentation/subscriptions_screen.dart';
+
 import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'core/constants/app_strings.dart';
+import 'core/theme/app_colors.dart';
+import 'core/utils/currency_format.dart';
+import 'core/utils/name_initials.dart';
+import 'features/about/about_screen.dart';
+import 'features/subscriptions/domain/billing_cycle.dart';
+import 'features/subscriptions/domain/cost_calculator.dart';
+import 'features/subscriptions/domain/renewal_calculator.dart';
+import 'features/subscriptions/domain/subscription.dart';
+import 'features/subscriptions/domain/subscription_category.dart';
 import 'bai_yad_screens.dart';
 
-const _ink = Color(0xFF0B0D10);
-const _panel = Color(0xFF0E121D);
-const _panelRaised = Color(0xFF141A28);
-const _mint = Color(0xFF10B981);
-const _mintBright = Color(0xFF4EDE98);
-const _slate = Color(0xFF94A3B8);
-const _line = Color(0xFF202635);
+const _ink = AppColors.ink;
+const _panel = AppColors.panel;
+const _panelRaised = AppColors.panelRaised;
+const _mint = AppColors.mint;
+const _mintBright = AppColors.brightGreen;
+const _slate = AppColors.muted;
+const _line = AppColors.line;
 
-String _formatPeso(double amount) {
-  final decimals = amount % 1 == 0 ? 0 : 2;
-  final parts = amount.toStringAsFixed(decimals).split('.');
-  final whole = parts.first.replaceAllMapped(
-    RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
-    (match) => '${match[1]},',
-  );
-  return '₱$whole${parts.length > 1 ? '.${parts[1]}' : ''}';
-}
+String _formatPeso(double amount) => formatPeso(amount);
 
-String _initialsForName(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) return 'AN';
-  if (parts.length == 1) {
-    final firstName = parts.first;
-    return firstName
-        .substring(0, firstName.length > 1 ? 2 : 1)
-        .toUpperCase();
-  }
-  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+extension on Subscription {
+  IconData get icon => switch (category) {
+    SubscriptionCategory.utilities => Icons.wifi_rounded,
+    SubscriptionCategory.streaming => Icons.movie_outlined,
+    SubscriptionCategory.software => Icons.draw_outlined,
+    SubscriptionCategory.workTools => Icons.cloud_outlined,
+    SubscriptionCategory.productivity => Icons.checklist_rounded,
+  };
+
+  Color get color => Color(colorArgb ?? AppColors.mint.toARGB32());
+
+  String get cadence => switch (billingCycle) {
+    BillingCycle.weekly => '/wk',
+    BillingCycle.monthly => '/mo',
+    BillingCycle.quarterly => '/qtr',
+    BillingCycle.biAnnual => '/6 mo',
+    BillingCycle.yearly => '/yr',
+  };
+
+  String get dateLabel =>
+      '${_monthNames[anchorDate.month - 1]} ${anchorDate.day}, ${anchorDate.year}';
+
+  String get amountLabel => _formatPeso(amount);
 }
 
 class LaunchScreen extends StatefulWidget {
@@ -110,16 +123,8 @@ class _LaunchScreenState extends State<LaunchScreen> {
                 ),
               ),
               const SizedBox(height: 28),
-              const Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(text: 'BAI'),
-                    TextSpan(
-                      text: '-yad',
-                      style: TextStyle(color: Color(0xFF3A9D78)),
-                    ),
-                  ],
-                ),
+              const Text(
+                AppStrings.appName,
                 style: TextStyle(
                   fontSize: 38,
                   fontWeight: FontWeight.w800,
@@ -128,13 +133,12 @@ class _LaunchScreenState extends State<LaunchScreen> {
               ),
               const SizedBox(height: 7),
               const Text(
-                'PRIVACY-FIRST SUBSCRIPTION TRACKER',
+                AppStrings.shortTagline,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Color(0xFF747B89),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.6,
+                  color: _slate,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 42),
@@ -181,44 +185,6 @@ class _LaunchScreenState extends State<LaunchScreen> {
   );
 }
 
-class SubscriptionEntry {
-  const SubscriptionEntry({
-    required this.name,
-    required this.amount,
-    required this.cycle,
-    required this.category,
-    required this.renewalDate,
-    required this.color,
-  });
-
-  final String name;
-  final double amount;
-  final String cycle;
-  final String category;
-  final DateTime renewalDate;
-  final Color color;
-
-  IconData get icon => switch (category) {
-    'Utilities' => Icons.wifi_rounded,
-    'Streaming' => Icons.movie_outlined,
-    'Software' => Icons.draw_outlined,
-    'Work Tools' => Icons.cloud_outlined,
-    _ => Icons.credit_card_rounded,
-  };
-
-  String get cadence => switch (cycle) {
-    'Yearly' => '/yr',
-    'Quarterly' => '/qtr',
-    'Bi-annual' => '/6 mo',
-    _ => '/mo',
-  };
-
-  String get dateLabel =>
-      '${_monthNames[renewalDate.month - 1]} ${renewalDate.day}, ${renewalDate.year}';
-
-  String get amountLabel => _formatPeso(amount);
-}
-
 const _monthNames = [
   'Jan',
   'Feb',
@@ -245,89 +211,79 @@ class SubscriptionsScreen extends StatefulWidget {
 
 class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   final _searchController = TextEditingController();
-  String _selectedCategory = 'All';
+  String? _selectedCategory;
   String _query = '';
   int _selectedTab = 0;
   bool _homeYearly = false;
   bool _breakdownAnnualized = false;
   bool _alertVisible = true;
-  late final List<SubscriptionEntry> _subscriptions = [
-    SubscriptionEntry(
+  late final List<Subscription> _subscriptions = [
+    Subscription(
+      id: 'adobe-creative-cloud',
       name: 'Adobe Creative Cloud',
       amount: 1199,
-      cycle: 'Monthly',
-      category: 'Software',
-      renewalDate: DateTime(2026, 10, 16),
-      color: const Color(0xFF10B9A4),
+      billingCycle: BillingCycle.monthly,
+      category: SubscriptionCategory.software,
+      anchorDate: DateTime(2026, 10, 16),
+      createdAt: DateTime(2026, 1, 1),
+      colorArgb: 0xFF10B9A4,
     ),
-    SubscriptionEntry(
+    Subscription(
+      id: 'pldt-home-fiber',
       name: 'PLDT Home Fiber',
       amount: 1499,
-      cycle: 'Monthly',
-      category: 'Utilities',
-      renewalDate: DateTime(2026, 10, 14),
-      color: const Color(0xFF20B8EA),
+      billingCycle: BillingCycle.monthly,
+      category: SubscriptionCategory.utilities,
+      anchorDate: DateTime(2026, 10, 14),
+      createdAt: DateTime(2026, 1, 1),
+      colorArgb: 0xFF20B8EA,
     ),
-    SubscriptionEntry(
+    Subscription(
+      id: 'netflix-ph',
       name: 'Netflix PH (4K)',
       amount: 549,
-      cycle: 'Monthly',
-      category: 'Streaming',
-      renewalDate: DateTime(2026, 10, 23),
-      color: const Color(0xFFF04464),
+      billingCycle: BillingCycle.monthly,
+      category: SubscriptionCategory.streaming,
+      anchorDate: DateTime(2026, 10, 23),
+      createdAt: DateTime(2026, 1, 1),
+      colorArgb: 0xFFF04464,
     ),
-    SubscriptionEntry(
+    Subscription(
+      id: 'spotify-premium',
       name: 'Spotify Premium',
       amount: 149,
-      cycle: 'Monthly',
-      category: 'Streaming',
-      renewalDate: DateTime(2026, 10, 30),
-      color: const Color(0xFF10B981),
+      billingCycle: BillingCycle.monthly,
+      category: SubscriptionCategory.streaming,
+      anchorDate: DateTime(2026, 10, 30),
+      createdAt: DateTime(2026, 1, 1),
+      colorArgb: 0xFF10B981,
     ),
-    SubscriptionEntry(
+    Subscription(
+      id: 'google-one',
       name: 'Google One (100GB)',
       amount: 890,
-      cycle: 'Yearly',
-      category: 'Work Tools',
-      renewalDate: DateTime(2026, 11, 20),
-      color: const Color(0xFF20B8EA),
+      billingCycle: BillingCycle.yearly,
+      category: SubscriptionCategory.workTools,
+      anchorDate: DateTime(2026, 11, 20),
+      createdAt: DateTime(2026, 1, 1),
+      colorArgb: 0xFF20B8EA,
     ),
   ];
 
-  static const _categories = [
-    'All',
-    'Streaming',
-    'Software',
-    'Utilities',
-    'Work Tools',
-  ];
+  static const _categories = SubscriptionCategory.values;
 
-  List<SubscriptionEntry> get _visibleSubscriptions {
+  List<Subscription> get _visibleSubscriptions {
     final query = _query.trim().toLowerCase();
     return _subscriptions.where((item) {
       final matchesCategory =
-          _selectedCategory == 'All' || item.category == _selectedCategory;
+          _selectedCategory == null || item.category.label == _selectedCategory;
       final matchesQuery =
           query.isEmpty ||
           item.name.toLowerCase().contains(query) ||
-          item.category.toLowerCase().contains(query);
+          item.category.label.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
   }
-
-  double _monthlyAmount(SubscriptionEntry entry) => switch (entry.cycle) {
-    'Quarterly' => entry.amount / 3,
-    'Bi-annual' => entry.amount / 6,
-    'Yearly' => entry.amount / 12,
-    _ => entry.amount,
-  };
-
-  double _annualAmount(SubscriptionEntry entry) => switch (entry.cycle) {
-    'Quarterly' => entry.amount * 4,
-    'Bi-annual' => entry.amount * 2,
-    'Yearly' => entry.amount,
-    _ => entry.amount * 12,
-  };
 
   List<CategorySpending> _categorySpending({required bool annualized}) {
     const order = [
@@ -342,19 +298,23 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       'Streaming & Media': Color(0xFFF59E0B),
       'Work & Misc': Color(0xFF8B5CF6),
     };
+    final categoryTotals = categoryCostTotals(
+      _subscriptions,
+      annualized: annualized,
+    );
     final totals = <String, double>{};
-    for (final item in _subscriptions) {
-      final category = switch (item.category) {
-        'Utilities' => 'Utilities & Fiber',
-        'Software' => 'Software & Cloud',
-        'Streaming' => 'Streaming & Media',
-        _ => 'Work & Misc',
+    for (final entry in categoryTotals.entries) {
+      final category = switch (entry.key) {
+        SubscriptionCategory.utilities => 'Utilities & Fiber',
+        SubscriptionCategory.software => 'Software & Cloud',
+        SubscriptionCategory.streaming => 'Streaming & Media',
+        SubscriptionCategory.workTools ||
+        SubscriptionCategory.productivity => 'Work & Misc',
       };
       totals.update(
         category,
-        (total) =>
-            total + (annualized ? _annualAmount(item) : _monthlyAmount(item)),
-        ifAbsent: () => annualized ? _annualAmount(item) : _monthlyAmount(item),
+        (total) => total + entry.value,
+        ifAbsent: () => entry.value,
       );
     }
     return [
@@ -368,11 +328,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     ];
   }
 
-  double get _monthlyTotal =>
-      _subscriptions.fold(0, (total, item) => total + _monthlyAmount(item));
+  double get _monthlyTotal => totalMonthlyCost(_subscriptions);
 
-  double get _annualTotal =>
-      _subscriptions.fold(0, (total, item) => total + _annualAmount(item));
+  double get _annualTotal => totalAnnualCost(_subscriptions);
 
   @override
   void dispose() {
@@ -381,7 +339,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
   }
 
   Future<void> _openAddSheet() async {
-    final entry = await showModalBottomSheet<SubscriptionEntry>(
+    final entry = await showModalBottomSheet<Subscription>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -391,7 +349,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     if (!mounted || entry == null) return;
     setState(() {
       _subscriptions.insert(0, entry);
-      _selectedCategory = 'All';
+      _selectedCategory = null;
       _query = '';
       _searchController.clear();
     });
@@ -404,7 +362,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     );
   }
 
-  void _deleteSubscription(SubscriptionEntry entry) {
+  void _deleteSubscription(Subscription entry) {
     setState(() => _subscriptions.remove(entry));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -431,6 +389,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                 children: [
                   _HomeTab(
                     subscriptions: _subscriptions,
+                    renewals: upcomingRenewals(_subscriptions, limit: 4),
                     monthlyTotal: _monthlyTotal,
                     annualTotal: _annualTotal,
                     monthlyCategories: _categorySpending(annualized: false),
@@ -467,58 +426,63 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     );
   }
 
-  Widget _buildSubscriptionsList(
-    List<SubscriptionEntry> visibleSubscriptions,
-  ) => CustomScrollView(
-    key: const PageStorageKey('subscriptionList'),
-    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-    slivers: [
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-        sliver: SliverList.list(
-          children: [
-            _SearchField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _query = value),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _categories.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final category = _categories[index];
-                  return _CategoryChip(
-                    label: category == 'All'
-                        ? 'All (${_subscriptions.length})'
-                        : category,
-                    selected: _selectedCategory == category,
-                    onTap: () => setState(() => _selectedCategory = category),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 19),
-            if (visibleSubscriptions.isEmpty)
-              const _EmptySubscriptions()
-            else
-              ...visibleSubscriptions.map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _SubscriptionCard(
-                    key: ValueKey(entry.name),
-                    entry: entry,
-                    onDelete: () => _deleteSubscription(entry),
+  Widget _buildSubscriptionsList(List<Subscription> visibleSubscriptions) =>
+      CustomScrollView(
+        key: const PageStorageKey('subscriptionList'),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            sliver: SliverList.list(
+              children: [
+                _SearchField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _query = value),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 36,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _categories.length + 1,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return _CategoryChip(
+                          label: 'All (${_subscriptions.length})',
+                          selected: _selectedCategory == null,
+                          onTap: () => setState(() => _selectedCategory = null),
+                        );
+                      }
+                      final category = _categories[index - 1];
+                      return _CategoryChip(
+                        label: category.label,
+                        selected: _selectedCategory == category.label,
+                        onTap: () =>
+                            setState(() => _selectedCategory = category.label),
+                      );
+                    },
                   ),
                 ),
-              ),
-          ],
-        ),
-      ),
-    ],
-  );
+                const SizedBox(height: 19),
+                if (visibleSubscriptions.isEmpty)
+                  const _EmptySubscriptions()
+                else
+                  ...visibleSubscriptions.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _SubscriptionCard(
+                        key: ValueKey(entry.id),
+                        entry: entry,
+                        onDelete: () => _deleteSubscription(entry),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      );
 }
 
 class CategorySpending {
@@ -536,6 +500,7 @@ class CategorySpending {
 class _HomeTab extends StatelessWidget {
   const _HomeTab({
     required this.subscriptions,
+    required this.renewals,
     required this.monthlyTotal,
     required this.annualTotal,
     required this.monthlyCategories,
@@ -547,7 +512,8 @@ class _HomeTab extends StatelessWidget {
     required this.onDelete,
   });
 
-  final List<SubscriptionEntry> subscriptions;
+  final List<Subscription> subscriptions;
+  final List<UpcomingRenewal> renewals;
   final double monthlyTotal;
   final double annualTotal;
   final List<CategorySpending> monthlyCategories;
@@ -556,14 +522,12 @@ class _HomeTab extends StatelessWidget {
   final bool alertVisible;
   final VoidCallback onDismissAlert;
   final VoidCallback onMarkUsed;
-  final ValueChanged<SubscriptionEntry> onDelete;
+  final ValueChanged<Subscription> onDelete;
 
   @override
   Widget build(BuildContext context) {
     final total = yearly ? annualTotal : monthlyTotal;
     final cadence = yearly ? '/ yr' : '/ mo';
-    final upcoming = [...subscriptions]
-      ..sort((a, b) => a.renewalDate.compareTo(b.renewalDate));
     final categories = monthlyCategories
         .where((item) => item.amount > 0)
         .toList();
@@ -674,8 +638,11 @@ class _HomeTab extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 3),
-        for (final entry in upcoming.take(4))
-          _HomeRenewalRow(entry: entry, onDelete: () => onDelete(entry)),
+        for (final renewal in renewals)
+          _HomeRenewalRow(
+            renewal: renewal,
+            onDelete: () => onDelete(renewal.subscription),
+          ),
         const Padding(
           padding: EdgeInsets.only(top: 13),
           child: Row(
@@ -898,18 +865,19 @@ class _UnusedSubscriptionAlert extends StatelessWidget {
 }
 
 class _HomeRenewalRow extends StatelessWidget {
-  const _HomeRenewalRow({required this.entry, required this.onDelete});
-  final SubscriptionEntry entry;
+  const _HomeRenewalRow({required this.renewal, required this.onDelete});
+  final UpcomingRenewal renewal;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final entry = renewal.subscription;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final renewalDate = DateTime(
-      entry.renewalDate.year,
-      entry.renewalDate.month,
-      entry.renewalDate.day,
+      renewal.date.year,
+      renewal.date.month,
+      renewal.date.day,
     );
     final days = renewalDate.difference(today).inDays;
     final due = days < 0
@@ -956,7 +924,7 @@ class _HomeRenewalRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${entry.amountLabel} ${entry.cycle}',
+                  '${entry.amountLabel} ${entry.billingCycle.label}',
                   style: const TextStyle(color: _slate, fontSize: 10),
                 ),
               ],
@@ -1187,7 +1155,7 @@ class _BreakdownCategoryRow extends StatelessWidget {
     constraints: const BoxConstraints(minHeight: 45),
     decoration: BoxDecoration(
       border: showDivider
-          ? const Border(bottom: BorderSide(color: Color(0x171FFFFFF)))
+          ? const Border(bottom: BorderSide(color: Color(0x17FFFFFF)))
           : null,
     ),
     child: Row(
@@ -1296,7 +1264,7 @@ class _SpendingInsights extends StatelessWidget {
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                annualized ? 'Optimize' : 'Optimize',
+                'Optimize',
                 style: const TextStyle(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -1365,19 +1333,21 @@ class _SubscriptionsHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 9),
-        const Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: 'BAI'),
-              TextSpan(
-                text: '-yad',
-                style: TextStyle(color: Color(0xFF3A9D78)),
-              ),
-            ],
-          ),
+        const Text(
+          AppStrings.appName,
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
         ),
         const Spacer(),
+        IconButton(
+          tooltip: 'About',
+          visualDensity: const VisualDensity(horizontal: -2, vertical: 0),
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 48),
+          padding: EdgeInsets.zero,
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const AboutScreen())),
+          icon: const Icon(Icons.info_outline_rounded, color: _mintBright),
+        ),
         OutlinedButton.icon(
           key: const Key('addSubscriptionButton'),
           onPressed: onAdd,
@@ -1391,12 +1361,12 @@ class _SubscriptionsHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 4),
         CircleAvatar(
           radius: 16,
           backgroundColor: const Color(0xFF202633),
           child: Text(
-            _initialsForName(name),
+            nameInitials(name),
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -1479,7 +1449,7 @@ class _SubscriptionCard extends StatelessWidget {
     required this.entry,
     required this.onDelete,
   });
-  final SubscriptionEntry entry;
+  final Subscription entry;
   final VoidCallback onDelete;
 
   @override
@@ -1528,7 +1498,7 @@ class _SubscriptionCard extends StatelessWidget {
                     Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(text: entry.category),
+                          TextSpan(text: entry.category.label),
                           const TextSpan(text: '  •  '),
                           TextSpan(text: 'Next: ${entry.dateLabel}'),
                         ],
@@ -1718,21 +1688,15 @@ class _AddSubscriptionSheet extends StatefulWidget {
 
 class _AddSubscriptionSheetState extends State<_AddSubscriptionSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Spotify Premium');
-  final _amountController = TextEditingController(text: '149.00');
-  String _cycle = 'Monthly';
-  String _category = 'Streaming';
-  DateTime _renewalDate = DateTime(2026, 10, 15);
+  final _nameController = TextEditingController();
+  final _amountController = TextEditingController();
+  BillingCycle _cycle = BillingCycle.monthly;
+  SubscriptionCategory _category = SubscriptionCategory.streaming;
+  DateTime _renewalDate = DateTime.now();
   Color _selectedColor = _mint;
 
-  static const _cycles = ['Monthly', 'Quarterly', 'Bi-annual', 'Yearly'];
-  static const _categories = [
-    'Streaming',
-    'Software',
-    'Utilities',
-    'Work Tools',
-    'Productivity',
-  ];
+  static const _cycles = BillingCycle.values;
+  static const _categories = SubscriptionCategory.values;
   static const _colors = [
     Color(0xFFEF4444),
     Color(0xFF10B981),
@@ -1771,13 +1735,15 @@ class _AddSubscriptionSheetState extends State<_AddSubscriptionSheet> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    final entry = SubscriptionEntry(
+    final entry = Subscription(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
       name: _nameController.text.trim(),
       amount: double.parse(_amountController.text.trim()),
-      cycle: _cycle,
+      billingCycle: _cycle,
       category: _category,
-      renewalDate: _renewalDate,
-      color: _selectedColor,
+      anchorDate: _renewalDate,
+      createdAt: DateTime.now(),
+      colorArgb: _selectedColor.toARGB32(),
     );
     Navigator.of(context).pop(entry);
   }
@@ -1918,7 +1884,7 @@ class _AddSubscriptionSheetState extends State<_AddSubscriptionSheet> {
                             children: [
                               _FormLabel('BILLING CYCLE'),
                               const SizedBox(height: 7),
-                              DropdownButtonFormField<String>(
+                              DropdownButtonFormField<BillingCycle>(
                                 key: const Key('billingCycleDropdown'),
                                 isExpanded: true,
                                 initialValue: _cycle,
@@ -1926,12 +1892,15 @@ class _AddSubscriptionSheetState extends State<_AddSubscriptionSheet> {
                                     .map(
                                       (value) => DropdownMenuItem(
                                         value: value,
-                                        child: Text(value),
+                                        child: Text(value.label),
                                       ),
                                     )
                                     .toList(),
-                                onChanged: (value) =>
-                                    setState(() => _cycle = value!),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _cycle = value);
+                                  }
+                                },
                                 decoration: _inputDecoration(),
                                 dropdownColor: _panelRaised,
                                 style: const TextStyle(
@@ -1958,7 +1927,7 @@ class _AddSubscriptionSheetState extends State<_AddSubscriptionSheet> {
                             children: [
                               _FormLabel('CATEGORY'),
                               const SizedBox(height: 7),
-                              DropdownButtonFormField<String>(
+                              DropdownButtonFormField<SubscriptionCategory>(
                                 key: const Key('subscriptionCategoryDropdown'),
                                 isExpanded: true,
                                 initialValue: _category,
@@ -1966,12 +1935,15 @@ class _AddSubscriptionSheetState extends State<_AddSubscriptionSheet> {
                                     .map(
                                       (value) => DropdownMenuItem(
                                         value: value,
-                                        child: Text(value),
+                                        child: Text(value.label),
                                       ),
                                     )
                                     .toList(),
-                                onChanged: (value) =>
-                                    setState(() => _category = value!),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _category = value);
+                                  }
+                                },
                                 decoration: _inputDecoration(),
                                 dropdownColor: _panelRaised,
                                 style: const TextStyle(

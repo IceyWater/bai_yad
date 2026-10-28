@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'core/constants/app_strings.dart';
+import 'core/theme/app_theme.dart';
 import 'subscriptions_screen.dart';
 
 void main() {
@@ -12,15 +14,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BAI-yad',
+      title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3A9D78),
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF0B0D10),
-      ),
+      theme: AppTheme.dark,
       home: const LaunchScreen(),
     );
   }

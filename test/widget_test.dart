@@ -24,6 +24,8 @@ void main() {
     expect(find.text('Vault ready. Launching...'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1200));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('getStartedButton')));
+    await tester.pumpAndSettle();
 
     expect(find.text('TOTAL COMMITMENT'), findsOneWidget);
     expect(find.text('₱3,470'), findsOneWidget);
