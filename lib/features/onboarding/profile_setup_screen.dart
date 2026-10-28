@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/name_initials.dart';
+import '../subscriptions/application/subscription_providers.dart';
 
-class ProfileSetupScreen extends StatefulWidget {
+class ProfileSetupScreen extends ConsumerStatefulWidget {
   const ProfileSetupScreen({super.key, required this.destinationBuilder});
 
   /// Builds the next screen with the profile name, without coupling this
@@ -11,16 +13,26 @@ class ProfileSetupScreen extends StatefulWidget {
   final Widget Function(String name) destinationBuilder;
 
   @override
-  State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
+  ConsumerState<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
 }
 
-class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _nameController = TextEditingController(text: 'Juan dela Cruz');
 
-  void _continue({bool anonymous = false}) {
+  Future<void> _continue({bool anonymous = false}) async {
     final name = anonymous || _nameController.text.trim().isEmpty
         ? 'Anonymous'
         : _nameController.text.trim();
+    try {
+      await ref.read(profileControllerProvider.notifier).save(name);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save your profile: $error')),
+      );
+      return;
+    }
+    if (!mounted) return;
     Navigator.of(context).pushReplacement<void, void>(
       MaterialPageRoute<void>(builder: (_) => widget.destinationBuilder(name)),
     );
@@ -49,7 +61,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 height: 1.17,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.6,
-                color: Color(0xFFF3F4F6),
+                color: AppColors.textStrong,
               ),
             ),
             const SizedBox(height: 10),
@@ -105,7 +117,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         color: AppColors.ink,
                         borderRadius: BorderRadius.circular(13),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.10),
+                          color: AppColors.white.withValues(alpha: 0.10),
                         ),
                       ),
                       child: TextField(
@@ -120,7 +132,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         decoration: InputDecoration(
                           counterText: '',
                           hintText: 'e.g. Alex Morgan',
-                          hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                          hintStyle: const TextStyle(color: AppColors.textMuted),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14,
                             vertical: 14,
@@ -154,7 +166,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 label: const Text('Get Started'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.brightGreen,
-                  foregroundColor: const Color(0xFF07130E),
+                  foregroundColor: AppColors.onBrightGreen,
                   textStyle: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
@@ -223,13 +235,13 @@ class _Avatar extends StatelessWidget {
     padding: const EdgeInsets.all(2),
     decoration: const BoxDecoration(
       shape: BoxShape.circle,
-      gradient: LinearGradient(colors: [AppColors.green, Color(0xFF14221C)]),
+      gradient: LinearGradient(colors: [AppColors.green, AppColors.brandDeep]),
     ),
     child: Container(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.ink,
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: AppColors.lightBorder),
       ),
       child: Center(
         child: Text(
