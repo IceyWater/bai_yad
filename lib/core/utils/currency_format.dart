@@ -1,9 +1,14 @@
 String formatPeso(double amount) {
-  final decimals = amount % 1 == 0 ? 0 : 2;
-  final parts = amount.toStringAsFixed(decimals).split('.');
-  final whole = parts.first.replaceAllMapped(
+  final centavos = (amount.abs() * 100 + 1e-7).round();
+  final wholeValue = centavos ~/ 100;
+  final fraction = centavos % 100;
+  final whole = wholeValue.toString().replaceAllMapped(
     RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
     (match) => '${match[1]},',
   );
-  return '₱$whole${parts.length > 1 ? '.${parts[1]}' : ''}';
+  final decimals = fraction == 0
+      ? ''
+      : '.${fraction.toString().padLeft(2, '0')}';
+  final sign = amount < 0 ? '-' : '';
+  return '$sign₱$whole$decimals';
 }

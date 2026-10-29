@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -46,5 +48,25 @@ void main() {
       repository.loadSubscriptions(),
       throwsA(isA<CorruptSubscriptionDataException>()),
     );
+  });
+
+  test('loads previously saved numeric amount values', () async {
+    SharedPreferences.setMockInitialValues({
+      'subscriptions.v1': jsonEncode([
+        {
+          'id': 'legacy',
+          'name': 'Legacy plan',
+          'amount': 1299.99,
+          'billingCycle': 'monthly',
+          'category': 'streaming',
+          'anchorDate': '2026-10-23T00:00:00.000',
+          'createdAt': '2026-01-01T00:00:00.000',
+        },
+      ]),
+    });
+
+    final loaded = await repository.loadSubscriptions();
+
+    expect(loaded.single.amount, 1299.99);
   });
 }

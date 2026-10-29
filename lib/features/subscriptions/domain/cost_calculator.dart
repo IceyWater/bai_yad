@@ -4,20 +4,20 @@ import 'subscription_category.dart';
 
 double monthlyCost(Subscription subscription) =>
     switch (subscription.billingCycle) {
-      BillingCycle.weekly => subscription.amount * 52 / 12,
-      BillingCycle.monthly => subscription.amount,
-      BillingCycle.quarterly => subscription.amount / 3,
-      BillingCycle.biAnnual => subscription.amount / 6,
-      BillingCycle.yearly => subscription.amount / 12,
+      BillingCycle.weekly => subscription.amountInCentavos * 52 / 1200,
+      BillingCycle.monthly => subscription.amountInCentavos / 100,
+      BillingCycle.quarterly => subscription.amountInCentavos / 300,
+      BillingCycle.biAnnual => subscription.amountInCentavos / 600,
+      BillingCycle.yearly => subscription.amountInCentavos / 1200,
     };
 
 double annualCost(Subscription subscription) =>
     switch (subscription.billingCycle) {
-      BillingCycle.weekly => subscription.amount * 52,
-      BillingCycle.monthly => subscription.amount * 12,
-      BillingCycle.quarterly => subscription.amount * 4,
-      BillingCycle.biAnnual => subscription.amount * 2,
-      BillingCycle.yearly => subscription.amount,
+      BillingCycle.weekly => subscription.amountInCentavos * 52 / 100,
+      BillingCycle.monthly => subscription.amountInCentavos * 12 / 100,
+      BillingCycle.quarterly => subscription.amountInCentavos * 4 / 100,
+      BillingCycle.biAnnual => subscription.amountInCentavos * 2 / 100,
+      BillingCycle.yearly => subscription.amountInCentavos / 100,
     };
 
 double totalMonthlyCost(Iterable<Subscription> subscriptions) =>

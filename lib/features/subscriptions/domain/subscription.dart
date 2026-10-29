@@ -2,10 +2,10 @@ import 'billing_cycle.dart';
 import 'subscription_category.dart';
 
 class Subscription {
-  const Subscription({
+  Subscription({
     required this.id,
     required this.name,
-    required this.amount,
+    required double amount,
     required this.billingCycle,
     required this.category,
     required this.anchorDate,
@@ -13,11 +13,12 @@ class Subscription {
     this.colorArgb,
     this.isRarelyUsed = false,
     this.notes,
-  });
+  }) : amountInCentavos = (amount * 100 + 1e-7).round();
 
   final String id;
   final String name;
-  final double amount;
+  final int amountInCentavos;
+  double get amount => amountInCentavos / 100;
   final BillingCycle billingCycle;
   final SubscriptionCategory category;
   final DateTime anchorDate;
@@ -83,7 +84,7 @@ class Subscription {
       other is Subscription &&
           other.id == id &&
           other.name == name &&
-          other.amount == amount &&
+          other.amountInCentavos == amountInCentavos &&
           other.billingCycle == billingCycle &&
           other.category == category &&
           other.anchorDate == anchorDate &&
@@ -96,7 +97,7 @@ class Subscription {
   int get hashCode => Object.hash(
     id,
     name,
-    amount,
+    amountInCentavos,
     billingCycle,
     category,
     anchorDate,

@@ -233,7 +233,10 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                                   }
                                   return null;
                                 },
-                                decoration: _inputDecoration(prefix: '₱'),
+                                decoration: _inputDecoration(
+                                  prefix: '₱',
+                                  helperText: '₱0.01 to ₱99,999,999.99',
+                                ),
                               ),
                             ],
                           ),
@@ -461,9 +464,15 @@ class _FormLabel extends StatelessWidget {
   );
 }
 
-InputDecoration _inputDecoration({String? hint, String? prefix}) =>
+InputDecoration _inputDecoration({
+  String? hint,
+  String? prefix,
+  String? helperText,
+}) =>
     InputDecoration(
       hintText: hint,
+      helperText: helperText,
+      helperStyle: const TextStyle(color: AppColors.muted, fontSize: 9),
       hintStyle: const TextStyle(color: AppColors.inputPlaceholder, fontSize: 12),
       prefixText: prefix,
       prefixStyle: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w700),

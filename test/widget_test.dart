@@ -75,12 +75,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TOTAL COMMITMENT'), findsOneWidget);
-    expect(find.text('₱3,470'), findsOneWidget);
+    expect(find.text('₱3,470.17'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('bottomNavBREAKDOWN')));
     await tester.pump();
     expect(find.text('CATEGORY BREAKDOWN'), findsOneWidget);
-    expect(find.text('₱3,470'), findsOneWidget);
+    expect(find.text('₱3,470.17'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('annualPeriodButton')));
     await tester.pump();
@@ -108,6 +108,75 @@ void main() {
 
     expect(find.text('Cloud Storage Plus'), findsOneWidget);
     expect(find.text('₱299'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('addSubscriptionButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('₱0.01 to ₱99,999,999.99'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('newSubscriptionAmountField')),
+      '100000000',
+    );
+    await tester.tap(find.byKey(const Key('saveSubscriptionButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Maximum cost is ₱99,999,999.99'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('newSubscriptionAmountField')),
+      '0',
+    );
+    await tester.tap(find.byKey(const Key('saveSubscriptionButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter a valid cost'), findsOneWidget);
+  });
+
+  testWidgets('sorting remains composed with category filtering', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          subscriptionRepositoryProvider.overrideWithValue(
+            _WidgetTestRepository(profileName: 'Saved User'),
+          ),
+        ],
+        child: const MyApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bottomNavSUBSCRIPTIONS')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('subscriptionSortDropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Monthly price').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Streaming').first);
+    await tester.pumpAndSettle();
+
+    final spotify = find.descendant(
+      of: find.byKey(const ValueKey('spotify-premium')),
+      matching: find.text('Spotify Premium'),
+    );
+    final netflix = find.descendant(
+      of: find.byKey(const ValueKey('netflix-ph')),
+      matching: find.text('Netflix PH (4K)'),
+    );
+    expect(spotify, findsOneWidget);
+    expect(netflix, findsOneWidget);
+    expect(tester.getTopLeft(spotify).dy, lessThan(tester.getTopLeft(netflix).dy));
+    expect(find.text('PLDT Home Fiber'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const Key('subscriptionSearchField')),
+      'not found',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No subscriptions found'), findsOneWidget);
   });
 
   testWidgets('edits, flags, marks used, and undoes subscription deletion', (
@@ -163,6 +232,10 @@ void main() {
 
     await tester.tap(find.byKey(const Key('bottomNavHOME')));
     await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Adobe Updated · ₱1,299.99/mo potential'),
+      findsOneWidget,
+    );
     final markUsedButton = find.text('Mark as used');
     await tester.ensureVisible(markUsedButton);
     await tester.tap(markUsedButton);

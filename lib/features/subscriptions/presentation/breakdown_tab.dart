@@ -25,7 +25,6 @@ class BreakdownTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cadence = annualized ? '/yr' : '/mo';
-    final roundedTotal = total.round();
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 17, 18, 25),
       children: [
@@ -84,7 +83,7 @@ class BreakdownTab extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        formatPeso(roundedTotal.toDouble()),
+                        formatPeso(total),
                         key: const Key('breakdownTotalAmount'),
                         style: const TextStyle(
                           color: AppColors.textPrimary,
@@ -216,7 +215,7 @@ class _BreakdownCategoryRow extends StatelessWidget {
           ),
         ),
         Text(
-          formatPeso(category.amount.roundToDouble()),
+          formatPeso(category.amount),
           style: const TextStyle(
             color: AppColors.textMain,
             fontSize: 10,

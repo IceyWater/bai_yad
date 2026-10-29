@@ -43,6 +43,13 @@ void main() {
     expect(decoded.copyWith(clearNotes: true).notes, isNull);
   });
 
+  test('stores amounts as whole centavos', () {
+    final subscription = entry(BillingCycle.monthly, 1.005);
+
+    expect(subscription.amountInCentavos, 101);
+    expect(subscription.amount, 1.01);
+  });
+
   test('calculates totals and category totals from normalized costs', () {
     final subscriptions = [
       entry(BillingCycle.monthly, 100),

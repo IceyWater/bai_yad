@@ -67,7 +67,7 @@ class HomeTab extends StatelessWidget {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              formatPeso(total.roundToDouble()),
+              formatPeso(total),
               key: const Key('homeTotalAmount'),
               style: const TextStyle(
                 fontSize: 30,
@@ -83,7 +83,7 @@ class HomeTab extends StatelessWidget {
         const SizedBox(height: 10),
         PeriodPill(
           firstLabel: 'Monthly',
-          secondLabel: 'Yearly (${formatPeso(annualTotal.roundToDouble())})',
+          secondLabel: 'Yearly (${formatPeso(annualTotal)})',
           secondSelected: yearly,
           onFirst: () => onYearlyChanged(false),
           onSecond: () => onYearlyChanged(true),
