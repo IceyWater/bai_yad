@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/currency_format.dart';
 import '../domain/billing_cycle.dart';
+import '../domain/cost_calculator.dart';
 import '../domain/renewal_calculator.dart';
 import '../domain/subscription.dart';
 import 'subscription_presentation.dart';
@@ -13,29 +14,27 @@ import 'subscription_tabs.dart';
 class HomeTab extends StatelessWidget {
   const HomeTab({
     required this.subscriptions,
+    required this.rarelyUsedSubscriptions,
     required this.renewals,
     required this.monthlyTotal,
     required this.annualTotal,
     required this.monthlyCategories,
     required this.yearly,
     required this.onYearlyChanged,
-    required this.alertVisible,
-    required this.onDismissAlert,
     required this.onMarkUsed,
     required this.onDelete,
     super.key,
   });
 
   final List<Subscription> subscriptions;
+  final List<Subscription> rarelyUsedSubscriptions;
   final List<UpcomingRenewal> renewals;
   final double monthlyTotal;
   final double annualTotal;
   final List<CategorySpending> monthlyCategories;
   final bool yearly;
   final ValueChanged<bool> onYearlyChanged;
-  final bool alertVisible;
-  final VoidCallback onDismissAlert;
-  final VoidCallback onMarkUsed;
+  final ValueChanged<Subscription> onMarkUsed;
   final ValueChanged<Subscription> onDelete;
 
   @override
@@ -126,10 +125,10 @@ class HomeTab extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 19),
-        if (alertVisible) ...[
-          _UnusedSubscriptionAlert(
+        if (rarelyUsedSubscriptions.isNotEmpty) ...[
+          _RarelyUsedSubscriptions(
+            subscriptions: rarelyUsedSubscriptions,
             onMarkUsed: onMarkUsed,
-            onDismiss: onDismissAlert,
           ),
           const SizedBox(height: 18),
         ],
@@ -212,14 +211,14 @@ String _shortCategory(String category) => switch (category) {
   _ => 'Work',
 };
 
-class _UnusedSubscriptionAlert extends StatelessWidget {
-  const _UnusedSubscriptionAlert({
+class _RarelyUsedSubscriptions extends StatelessWidget {
+  const _RarelyUsedSubscriptions({
+    required this.subscriptions,
     required this.onMarkUsed,
-    required this.onDismiss,
   });
 
-  final VoidCallback onMarkUsed;
-  final VoidCallback onDismiss;
+  final List<Subscription> subscriptions;
+  final ValueChanged<Subscription> onMarkUsed;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -229,7 +228,7 @@ class _UnusedSubscriptionAlert extends StatelessWidget {
       borderRadius: BorderRadius.circular(13),
       border: Border.all(color: AppColors.warningBorder),
     ),
-    child: Column(
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -250,7 +249,7 @@ class _UnusedSubscriptionAlert extends StatelessWidget {
             const SizedBox(width: 8),
             const Expanded(
               child: Text(
-                'UNUSED FLAG DETECTED',
+                'RARELY USED',
                 style: TextStyle(
                   color: AppColors.warningText,
                   fontSize: 9,
@@ -259,44 +258,36 @@ class _UnusedSubscriptionAlert extends StatelessWidget {
                 ),
               ),
             ),
-            const Text(
-              'Savings Alert',
-              style: TextStyle(color: AppColors.warningTextSoft, fontSize: 8),
-            ),
           ],
         ),
-        const SizedBox(height: 8),
-        const Text(
-          "Adobe CC hasn't been logged into in 28 days. Potential save: ₱1,199/mo.",
-          style: TextStyle(color: AppColors.warningTextStrong, fontSize: 10, height: 1.4),
-        ),
-        const SizedBox(height: 7),
-        Wrap(
-          spacing: 4,
-          children: [
-            TextButton(
-              onPressed: onMarkUsed,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.warningButtonText,
-                backgroundColor: AppColors.warningBorder,
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        const SizedBox(height: 5),
+        for (final subscription in subscriptions)
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${subscription.name} · ${formatPeso(monthlyCost(subscription))}/mo potential',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.warningTextStrong,
+                    fontSize: 10,
+                    height: 1.4,
+                  ),
+                ),
               ),
-              child: const Text('Mark as Used', style: TextStyle(fontSize: 9)),
-            ),
-            TextButton(
-              onPressed: onDismiss,
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.warningText,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              TextButton(
+                onPressed: () => onMarkUsed(subscription),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.warningButtonText,
+                  backgroundColor: AppColors.warningBorder,
+                  padding: const EdgeInsets.symmetric(horizontal: 9),
+                  minimumSize: const Size(48, 40),
+                ),
+                child: const Text('Mark as used', style: TextStyle(fontSize: 9)),
               ),
-              child: const Text('Dismiss', style: TextStyle(fontSize: 9)),
-            ),
-          ],
-        ),
+            ],
+          ),
       ],
     ),
   );
@@ -310,21 +301,10 @@ class _HomeRenewalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entry = renewal.subscription;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final renewalDate = DateTime(
-      renewal.date.year,
-      renewal.date.month,
-      renewal.date.day,
-    );
-    final days = renewalDate.difference(today).inDays;
-    final due = days < 0
-        ? 'Overdue'
-        : days == 0
-        ? 'Today'
-        : 'In $days days';
-    final dueColor = days < 0 ? AppColors.danger : AppColors.brightGreen;
-    final dueBackground = days < 0
+    final due = renewalLabel(renewal.date);
+    final overdue = due == 'Overdue';
+    final dueColor = overdue ? AppColors.danger : AppColors.brightGreen;
+    final dueBackground = overdue
         ? AppColors.danger.withValues(alpha: 0.12)
         : AppColors.mint.withValues(alpha: 0.10);
     return Container(

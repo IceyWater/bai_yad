@@ -109,6 +109,81 @@ void main() {
     expect(find.text('Cloud Storage Plus'), findsOneWidget);
     expect(find.text('₱299'), findsOneWidget);
   });
+
+  testWidgets('edits, flags, marks used, and undoes subscription deletion', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          subscriptionRepositoryProvider.overrideWithValue(
+            _WidgetTestRepository(profileName: 'Saved User'),
+          ),
+        ],
+        child: const MyApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('bottomNavSUBSCRIPTIONS')));
+    await tester.pumpAndSettle();
+
+    final editButton = find.byKey(
+      const Key('editSubscription-adobe-creative-cloud'),
+    );
+    await tester.ensureVisible(editButton);
+    await tester.tap(editButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Edit Subscription'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('newSubscriptionNameField')),
+      'Adobe Updated',
+    );
+    await tester.enterText(
+      find.byKey(const Key('newSubscriptionAmountField')),
+      '1299.99',
+    );
+    await tester.tap(find.byKey(const Key('saveSubscriptionButton')));
+    await tester.pumpAndSettle();
+    expect(find.text('Adobe Updated'), findsOneWidget);
+    expect(find.text('₱1,299.99'), findsOneWidget);
+
+    final rareUseButton = find.byKey(
+      const Key('rarelyUsedToggle-adobe-creative-cloud'),
+    );
+    await tester.ensureVisible(rareUseButton);
+    await tester.tap(rareUseButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Rarely used'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('bottomNavHOME')));
+    await tester.pumpAndSettle();
+    final markUsedButton = find.text('Mark as used');
+    await tester.ensureVisible(markUsedButton);
+    await tester.tap(markUsedButton);
+    await tester.pumpAndSettle();
+    expect(find.text('RARELY USED'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('bottomNavSUBSCRIPTIONS')));
+    await tester.pumpAndSettle();
+    final deleteButton = find.byKey(
+      const Key('deleteSubscription-adobe-creative-cloud'),
+    );
+    await tester.ensureVisible(deleteButton);
+    await tester.tap(deleteButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Adobe Updated'), findsNothing);
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Adobe Updated'), findsOneWidget);
+    expect(find.text('₱1,299.99'), findsOneWidget);
+  });
 }
 
 class _WidgetTestRepository implements SubscriptionRepository {

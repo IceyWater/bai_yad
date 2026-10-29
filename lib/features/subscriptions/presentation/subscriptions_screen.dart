@@ -9,6 +9,7 @@ import '../domain/cost_calculator.dart';
 import '../domain/renewal_calculator.dart';
 import '../domain/subscription.dart';
 import '../domain/subscription_category.dart';
+import '../domain/subscription_sort.dart';
 import '../application/subscription_providers.dart';
 import '../data/shared_preferences_subscription_repository.dart';
 import '../../onboarding/profile_setup_screen.dart';
@@ -194,11 +195,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
   int _selectedTab = 0;
   bool _homeYearly = false;
   bool _breakdownAnnualized = false;
-  bool _alertVisible = true;
+  SubscriptionSort _selectedSort = SubscriptionSort.nextRenewal;
 
   List<Subscription> _visibleSubscriptions(List<Subscription> subscriptions) {
     final query = _query.trim().toLowerCase();
-    return subscriptions.where((item) {
+    final filtered = subscriptions.where((item) {
       final matchesCategory =
           _selectedCategory == null || item.category.label == _selectedCategory;
       final matchesQuery =
@@ -207,6 +208,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
           item.category.label.toLowerCase().contains(query);
       return matchesCategory && matchesQuery;
     }).toList();
+    return sortSubscriptions(filtered, _selectedSort);
   }
 
   List<CategorySpending> _categorySpending(
@@ -295,6 +297,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
   }
 
   Future<void> _deleteSubscription(Subscription entry) async {
+    final subscriptions = ref.read(subscriptionControllerProvider).requireValue;
+    final index = subscriptions.indexWhere((item) => item.id == entry.id);
+    if (index < 0) return;
     try {
       await ref.read(subscriptionControllerProvider.notifier).remove(entry);
     } catch (error) {
@@ -305,13 +310,90 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
       return;
     }
     if (!mounted) return;
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${entry.name} removed'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => _restoreSubscription(entry, index),
+        ),
         backgroundColor: AppColors.panelRaised,
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  Future<void> _restoreSubscription(Subscription entry, int index) async {
+    try {
+      await ref
+          .read(subscriptionControllerProvider.notifier)
+          .restore(entry, index: index);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not restore subscription: $error')),
+      );
+    }
+  }
+
+  Future<void> _openEditSheet(Subscription original) async {
+    final edited = await showModalBottomSheet<Subscription>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddSubscriptionSheet(subscription: original),
+    );
+    if (!mounted || edited == null) return;
+    try {
+      await ref
+          .read(subscriptionControllerProvider.notifier)
+          .updateSubscription(edited);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save subscription changes: $error')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${edited.name} updated'),
+        backgroundColor: AppColors.panelRaised,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _toggleRarelyUsed(Subscription entry) async {
+    try {
+      await ref
+          .read(subscriptionControllerProvider.notifier)
+          .updateSubscription(
+            entry.copyWith(isRarelyUsed: !entry.isRarelyUsed),
+          );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update ${entry.name}: $error')),
+      );
+    }
+  }
+
+  Future<void> _markUsed(Subscription entry) async {
+    if (!entry.isRarelyUsed) return;
+    try {
+      await ref
+          .read(subscriptionControllerProvider.notifier)
+          .updateSubscription(entry.copyWith(isRarelyUsed: false));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update ${entry.name}: $error')),
+      );
+    }
   }
 
   @override
@@ -409,6 +491,9 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
                 children: [
                   HomeTab(
                     subscriptions: subscriptions,
+                    rarelyUsedSubscriptions: subscriptions
+                        .where((entry) => entry.isRarelyUsed)
+                        .toList(),
                     renewals: upcomingRenewals(subscriptions, limit: 4),
                     monthlyTotal: monthlyTotal,
                     annualTotal: annualTotal,
@@ -419,9 +504,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
                     yearly: _homeYearly,
                     onYearlyChanged: (value) =>
                         setState(() => _homeYearly = value),
-                    alertVisible: _alertVisible,
-                    onDismissAlert: () => setState(() => _alertVisible = false),
-                    onMarkUsed: () => setState(() => _alertVisible = false),
+                    onMarkUsed: _markUsed,
                     onDelete: _deleteSubscription,
                   ),
                   SubscriptionsList(
@@ -432,6 +515,10 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
                     onQueryChanged: (value) => setState(() => _query = value),
                     onCategoryChanged: (category) =>
                         setState(() => _selectedCategory = category),
+                    sort: _selectedSort,
+                    onSortChanged: (sort) => setState(() => _selectedSort = sort),
+                    onEdit: _openEditSheet,
+                    onToggleRarelyUsed: _toggleRarelyUsed,
                     onDelete: _deleteSubscription,
                   ),
                   BreakdownTab(

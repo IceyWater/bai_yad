@@ -65,6 +65,18 @@ List<UpcomingRenewal> upcomingRenewals(
   return limit == null ? renewals : renewals.take(limit).toList();
 }
 
+String renewalLabel(DateTime renewal, {DateTime? today}) {
+  final currentDate = _dateOnly(today ?? DateTime.now());
+  final renewalDate = _dateOnly(renewal);
+  final days = renewalDate.difference(currentDate).inDays;
+  return switch (days) {
+    < 0 => 'Overdue',
+    0 => 'Today',
+    1 => 'Tomorrow',
+    _ => 'In $days days',
+  };
+}
+
 DateTime _monthOccurrence(DateTime anchor, int monthOffset) {
   final monthIndex = anchor.year * 12 + anchor.month - 1 + monthOffset;
   final year = monthIndex ~/ 12;

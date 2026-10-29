@@ -6,6 +6,8 @@ import '../../../core/utils/name_initials.dart';
 import '../../about/about_screen.dart';
 import '../domain/subscription.dart';
 import '../domain/subscription_category.dart';
+import '../domain/subscription_sort.dart';
+import '../domain/renewal_calculator.dart';
 import 'subscription_presentation.dart';
 
 class SubscriptionsList extends StatelessWidget {
@@ -16,6 +18,10 @@ class SubscriptionsList extends StatelessWidget {
     required this.subscriptions,
     required this.onQueryChanged,
     required this.onCategoryChanged,
+    required this.sort,
+    required this.onSortChanged,
+    required this.onEdit,
+    required this.onToggleRarelyUsed,
     required this.onDelete,
     super.key,
   });
@@ -26,6 +32,10 @@ class SubscriptionsList extends StatelessWidget {
   final List<Subscription> subscriptions;
   final ValueChanged<String> onQueryChanged;
   final ValueChanged<String?> onCategoryChanged;
+  final SubscriptionSort sort;
+  final ValueChanged<SubscriptionSort> onSortChanged;
+  final ValueChanged<Subscription> onEdit;
+  final ValueChanged<Subscription> onToggleRarelyUsed;
   final ValueChanged<Subscription> onDelete;
 
   static const _categories = SubscriptionCategory.values;
@@ -40,7 +50,42 @@ class SubscriptionsList extends StatelessWidget {
         sliver: SliverList.list(
           children: [
             _SearchField(controller: controller, onChanged: onQueryChanged),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text(
+                  'SORT BY',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                DropdownButton<SubscriptionSort>(
+                  key: const Key('subscriptionSortDropdown'),
+                  value: sort,
+                  underline: const SizedBox.shrink(),
+                  dropdownColor: AppColors.panelRaised,
+                  style: const TextStyle(
+                    color: AppColors.textMain,
+                    fontSize: 12,
+                  ),
+                  items: SubscriptionSort.values
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(value.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) onSortChanged(value);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               height: 36,
               child: ListView.separated(
@@ -74,6 +119,8 @@ class SubscriptionsList extends StatelessWidget {
                   child: _SubscriptionCard(
                     key: ValueKey(entry.id),
                     entry: entry,
+                    onEdit: () => onEdit(entry),
+                    onToggleRarelyUsed: () => onToggleRarelyUsed(entry),
                     onDelete: () => onDelete(entry),
                   ),
                 ),
@@ -242,14 +289,19 @@ class _SubscriptionCard extends StatelessWidget {
   const _SubscriptionCard({
     super.key,
     required this.entry,
+    required this.onEdit,
+    required this.onToggleRarelyUsed,
     required this.onDelete,
   });
   final Subscription entry;
+  final VoidCallback onEdit;
+  final VoidCallback onToggleRarelyUsed;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final isUnused = entry.name == 'Adobe Creative Cloud';
+    final nextDate = nextRenewal(entry.anchorDate, entry.billingCycle);
+    final dueLabel = renewalLabel(nextDate);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.panel,
@@ -295,7 +347,10 @@ class _SubscriptionCard extends StatelessWidget {
                         children: [
                           TextSpan(text: entry.category.label),
                           const TextSpan(text: '  •  '),
-                          TextSpan(text: 'Next: ${entry.dateLabel}'),
+                          TextSpan(
+                            text:
+                                'Next: ${formatSubscriptionDate(nextDate)} · $dueLabel',
+                          ),
                         ],
                       ),
                       maxLines: 2,
@@ -337,10 +392,10 @@ class _SubscriptionCard extends StatelessWidget {
             child: Divider(height: 1, color: AppColors.cardDivider),
           ),
           SizedBox(
-            height: 42,
+            height: 48,
             child: Row(
               children: [
-                if (isUnused)
+                if (entry.isRarelyUsed)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 9,
@@ -361,7 +416,7 @@ class _SubscriptionCard extends StatelessWidget {
                         ),
                         SizedBox(width: 5),
                         Text(
-                          'Unused (28d)',
+                          'Rarely used',
                           style: TextStyle(
                             color: AppColors.warningAccent,
                             fontSize: 10,
@@ -373,6 +428,35 @@ class _SubscriptionCard extends StatelessWidget {
                   ),
                 const Spacer(),
                 IconButton(
+                  key: Key('editSubscription-${entry.id}'),
+                  tooltip: 'Edit ${entry.name}',
+                  onPressed: onEdit,
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 17,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+                IconButton(
+                  key: Key('rarelyUsedToggle-${entry.id}'),
+                  tooltip: entry.isRarelyUsed
+                      ? 'Mark ${entry.name} as used'
+                      : 'Mark ${entry.name} as rarely used',
+                  onPressed: onToggleRarelyUsed,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    entry.isRarelyUsed
+                        ? Icons.flag_rounded
+                        : Icons.outlined_flag_rounded,
+                    size: 17,
+                    color: entry.isRarelyUsed
+                        ? AppColors.warningAccent
+                        : AppColors.textMuted,
+                  ),
+                ),
+                IconButton(
+                  key: Key('deleteSubscription-${entry.id}'),
                   tooltip: 'Remove ${entry.name}',
                   onPressed: onDelete,
                   visualDensity: VisualDensity.compact,

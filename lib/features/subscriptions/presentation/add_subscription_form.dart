@@ -8,7 +8,9 @@ import '../domain/subscription_category.dart';
 import 'subscription_presentation.dart';
 
 class AddSubscriptionSheet extends StatefulWidget {
-  const AddSubscriptionSheet({super.key});
+  const AddSubscriptionSheet({super.key, this.subscription});
+
+  final Subscription? subscription;
 
   @override
   State<AddSubscriptionSheet> createState() => _AddSubscriptionSheetState();
@@ -18,10 +20,10 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
-  BillingCycle _cycle = BillingCycle.monthly;
-  SubscriptionCategory _category = SubscriptionCategory.streaming;
-  DateTime _renewalDate = DateTime.now();
-  Color _selectedColor = AppColors.mint;
+  late BillingCycle _cycle;
+  late SubscriptionCategory _category;
+  late DateTime _renewalDate;
+  late Color _selectedColor;
 
   static const _cycles = BillingCycle.values;
   static const _categories = SubscriptionCategory.values;
@@ -32,6 +34,18 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
     AppColors.categoryWork,
     AppColors.categoryStreaming,
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    final subscription = widget.subscription;
+    _nameController.text = subscription?.name ?? '';
+    _amountController.text = subscription?.amount.toString() ?? '';
+    _cycle = subscription?.billingCycle ?? BillingCycle.monthly;
+    _category = subscription?.category ?? SubscriptionCategory.streaming;
+    _renewalDate = subscription?.anchorDate ?? DateTime.now();
+    _selectedColor = subscription?.color ?? AppColors.mint;
+  }
 
   @override
   void dispose() {
@@ -63,15 +77,18 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
+    final existing = widget.subscription;
     final entry = Subscription(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
       name: _nameController.text.trim(),
       amount: double.parse(_amountController.text.trim()),
       billingCycle: _cycle,
       category: _category,
       anchorDate: _renewalDate,
-      createdAt: DateTime.now(),
+      createdAt: existing?.createdAt ?? DateTime.now(),
       colorArgb: _selectedColor.toARGB32(),
+      isRarelyUsed: existing?.isRarelyUsed ?? false,
+      notes: existing?.notes,
     );
     Navigator.of(context).pop(entry);
   }
@@ -106,8 +123,10 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Add Subscription',
+                        Text(
+                          widget.subscription == null
+                              ? 'Add Subscription'
+                              : 'Edit Subscription',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -164,10 +183,18 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                       key: const Key('newSubscriptionNameField'),
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? 'Enter a service name'
-                          : null,
+                      maxLength: 80,
+                      buildCounter:
+                          (context, {required currentLength, required isFocused, maxLength}) =>
+                              null,
+                      validator: (value) {
+                        final name = value?.trim() ?? '';
+                        if (name.isEmpty) return 'Enter a service name';
+                        if (name.length > 80) {
+                          return 'Use 80 characters or fewer';
+                        }
+                        return null;
+                      },
                       decoration: _inputDecoration(
                         hint: 'e.g. Spotify Premium',
                       ),
@@ -191,14 +218,20 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                                     ),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(
-                                    RegExp(r'^\d*\.?\d{0,2}'),
+                                    RegExp(r'^\d*\.?\d{0,2}$'),
                                   ),
                                 ],
                                 validator: (value) {
                                   final amount = double.tryParse(value ?? '');
-                                  return amount == null || amount <= 0
-                                      ? 'Enter a valid cost'
-                                      : null;
+                                  if (amount == null ||
+                                      !amount.isFinite ||
+                                      amount <= 0) {
+                                    return 'Enter a valid cost';
+                                  }
+                                  if (amount > 99999999.99) {
+                                    return 'Maximum cost is ₱99,999,999.99';
+                                  }
+                                  return null;
                                 },
                                 decoration: _inputDecoration(prefix: '₱'),
                               ),
@@ -383,7 +416,11 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                         key: const Key('saveSubscriptionButton'),
                         onPressed: _save,
                         icon: const Icon(Icons.check_rounded, size: 19),
-                        label: const Text('Save Subscription'),
+                        label: Text(
+                          widget.subscription == null
+                              ? 'Save Subscription'
+                              : 'Save Changes',
+                        ),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.mint,
                           foregroundColor: AppColors.ink,

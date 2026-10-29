@@ -43,6 +43,71 @@ void main() {
     expect(repository.savedSubscriptions, isEmpty);
   });
 
+  test('controller updates by ID and persists the replacement', () async {
+    final repository = _MemorySubscriptionRepository();
+    final container = ProviderContainer(
+      overrides: [subscriptionRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await container.read(subscriptionControllerProvider.future);
+
+    final original = _subscription('streaming');
+    await container.read(subscriptionControllerProvider.notifier).add(original);
+    final edited = original.copyWith(name: 'Updated name', amount: 199);
+    await container
+      .read(subscriptionControllerProvider.notifier)
+      .updateSubscription(edited);
+
+    expect(container.read(subscriptionControllerProvider).requireValue, [edited]);
+    expect(repository.savedSubscriptions, [edited]);
+    expect(edited.id, original.id);
+    expect(edited.createdAt, original.createdAt);
+  });
+
+  test('controller restores a removed subscription at its saved position', () async {
+    final repository = _MemorySubscriptionRepository();
+    final container = ProviderContainer(
+      overrides: [subscriptionRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await container.read(subscriptionControllerProvider.future);
+
+    final first = _subscription('first');
+    final middle = _subscription('middle');
+    final last = _subscription('last');
+    final controller = container.read(subscriptionControllerProvider.notifier);
+    await controller.add(last);
+    await controller.add(middle);
+    await controller.add(first);
+    await controller.remove(middle);
+    await controller.restore(middle, index: 1);
+
+    expect(container.read(subscriptionControllerProvider).requireValue, [
+      first,
+      middle,
+      last,
+    ]);
+    expect(repository.savedSubscriptions, [first, middle, last]);
+  });
+
+  test('controller rejects updates for unknown IDs', () async {
+    final repository = _MemorySubscriptionRepository();
+    final container = ProviderContainer(
+      overrides: [subscriptionRepositoryProvider.overrideWithValue(repository)],
+    );
+    addTearDown(container.dispose);
+    await container.read(subscriptionControllerProvider.future);
+
+    await expectLater(
+      container
+          .read(subscriptionControllerProvider.notifier)
+          .updateSubscription(_subscription('missing')),
+      throwsA(isA<StateError>()),
+    );
+    expect(container.read(subscriptionControllerProvider).requireValue, isEmpty);
+    expect(repository.savedSubscriptions, isEmpty);
+  });
+
   test('profile controller persists the cleaned profile name', () async {
     final repository = _MemorySubscriptionRepository();
     final container = ProviderContainer(
