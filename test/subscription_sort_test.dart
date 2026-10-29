@@ -42,16 +42,20 @@ void main() {
 
   test('sorts price by normalized monthly commitment', () {
     expect(
-      sortSubscriptions(subscriptions, SubscriptionSort.price)
-          .map((entry) => entry.id),
-        ['earlier', 'later', 'weekly'],
+      sortSubscriptions(
+        subscriptions,
+        SubscriptionSort.price,
+      ).map((entry) => entry.id),
+      ['earlier', 'later', 'weekly'],
     );
   });
 
   test('sorts names case-insensitively and uses IDs for duplicate names', () {
     expect(
-      sortSubscriptions(subscriptions, SubscriptionSort.name)
-          .map((entry) => entry.id),
+      sortSubscriptions(
+        subscriptions,
+        SubscriptionSort.name,
+      ).map((entry) => entry.id),
       ['earlier', 'weekly', 'later'],
     );
   });

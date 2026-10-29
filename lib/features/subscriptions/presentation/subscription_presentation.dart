@@ -47,4 +47,3 @@ extension SubscriptionPresentation on Subscription {
 
   String get amountLabel => formatPeso(amount);
 }
-

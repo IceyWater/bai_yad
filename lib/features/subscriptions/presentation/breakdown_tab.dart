@@ -93,7 +93,10 @@ class BreakdownTab extends StatelessWidget {
                       ),
                       Text(
                         '$itemCount active items',
-                        style: const TextStyle(color: AppColors.muted, fontSize: 10),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
@@ -222,7 +225,10 @@ class _BreakdownCategoryRow extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        Text(cadence, style: const TextStyle(color: AppColors.muted, fontSize: 9)),
+        Text(
+          cadence,
+          style: const TextStyle(color: AppColors.muted, fontSize: 9),
+        ),
       ],
     ),
   );

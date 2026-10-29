@@ -184,9 +184,12 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                       controller: _nameController,
                       textCapitalization: TextCapitalization.words,
                       maxLength: 80,
-                      buildCounter:
-                          (context, {required currentLength, required isFocused, maxLength}) =>
-                              null,
+                      buildCounter: (
+                        context, {
+                        required currentLength,
+                        required isFocused,
+                        maxLength,
+                      }) => null,
                       validator: (value) {
                         final name = value?.trim() ?? '';
                         if (name.isEmpty) return 'Enter a service name';
@@ -389,7 +392,10 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                                 color: color,
                                 shape: BoxShape.circle,
                                 border: selected
-                                    ? Border.all(color: AppColors.white, width: 2)
+                                    ? Border.all(
+                                        color: AppColors.white,
+                                        width: 2,
+                                      )
                                     : null,
                                 boxShadow: selected
                                     ? [
@@ -468,28 +474,30 @@ InputDecoration _inputDecoration({
   String? hint,
   String? prefix,
   String? helperText,
-}) =>
-    InputDecoration(
-      hintText: hint,
-      helperText: helperText,
-      helperStyle: const TextStyle(color: AppColors.muted, fontSize: 9),
-      hintStyle: const TextStyle(color: AppColors.inputPlaceholder, fontSize: 12),
-      prefixText: prefix,
-      prefixStyle: const TextStyle(color: AppColors.muted, fontWeight: FontWeight.w700),
-      filled: true,
-      fillColor: AppColors.inputSurface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.mint, width: 1.3),
-      ),
-      errorStyle: const TextStyle(fontSize: 10),
-    );
+}) => InputDecoration(
+  hintText: hint,
+  helperText: helperText,
+  helperStyle: const TextStyle(color: AppColors.muted, fontSize: 9),
+  hintStyle: const TextStyle(color: AppColors.inputPlaceholder, fontSize: 12),
+  prefixText: prefix,
+  prefixStyle: const TextStyle(
+    color: AppColors.muted,
+    fontWeight: FontWeight.w700,
+  ),
+  filled: true,
+  fillColor: AppColors.inputSurface,
+  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+  border: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColors.inputBorder),
+  ),
+  enabledBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColors.inputBorder),
+  ),
+  focusedBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(12),
+    borderSide: const BorderSide(color: AppColors.mint, width: 1.3),
+  ),
+  errorStyle: const TextStyle(fontSize: 10),
+);

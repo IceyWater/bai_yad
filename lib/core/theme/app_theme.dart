@@ -4,18 +4,19 @@ import 'app_colors.dart';
 
 abstract final class AppTheme {
   static ThemeData get dark {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.green,
-      brightness: Brightness.dark,
-    ).copyWith(
-      primary: AppColors.green,
-      onPrimary: AppColors.ink,
-      surface: AppColors.panel,
-      onSurface: AppColors.textPrimary,
-      onSurfaceVariant: AppColors.muted,
-      outline: AppColors.line,
-      error: AppColors.danger,
-    );
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: AppColors.green,
+          brightness: Brightness.dark,
+        ).copyWith(
+          primary: AppColors.green,
+          onPrimary: AppColors.ink,
+          surface: AppColors.panel,
+          onSurface: AppColors.textPrimary,
+          onSurfaceVariant: AppColors.muted,
+          outline: AppColors.line,
+          error: AppColors.danger,
+        );
 
     return ThemeData(
       colorScheme: colorScheme,

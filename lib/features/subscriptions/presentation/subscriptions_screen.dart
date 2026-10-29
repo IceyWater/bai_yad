@@ -10,6 +10,8 @@ import '../domain/renewal_calculator.dart';
 import '../domain/subscription.dart';
 import '../domain/subscription_category.dart';
 import '../domain/subscription_sort.dart';
+import '../application/reminder_settings_provider.dart';
+import 'reminder_settings_dialog.dart';
 import '../application/subscription_providers.dart';
 import '../data/shared_preferences_subscription_repository.dart';
 import '../../onboarding/profile_setup_screen.dart';
@@ -68,12 +70,17 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.ink,
     body: SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 46),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 46),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
               Container(
                 width: 80,
                 height: 80,
@@ -170,7 +177,10 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
                   child: const Text('Retry'),
                 ),
               ],
-            ],
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -382,6 +392,15 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
     }
   }
 
+  void _openReminderSettings() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => ReminderSettingsDialog(
+        subscriptions: ref.read(subscriptionControllerProvider).requireValue,
+      ),
+    );
+  }
+
   Future<void> _markUsed(Subscription entry) async {
     if (!entry.isRarelyUsed) return;
     try {
@@ -396,8 +415,38 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
     }
   }
 
+  Future<void> _refreshReminderSchedule() async {
+    final settingsState = ref.read(reminderSettingsControllerProvider);
+    final subscriptionsState = ref.read(subscriptionControllerProvider);
+    if (!settingsState.hasValue || !subscriptionsState.hasValue) return;
+    final settings = settingsState.requireValue;
+    if (!settings.enabled) return;
+    try {
+      await ref
+          .read(reminderServiceProvider)
+          .schedule(
+            subscriptionsState.requireValue,
+            now: DateTime.now(),
+            daysBefore: settings.daysBefore,
+          );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not refresh renewal reminders: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen(subscriptionControllerProvider, (previous, next) {
+      if (next.hasValue) _refreshReminderSchedule();
+    });
+    ref.listen(reminderSettingsControllerProvider, (previous, next) {
+      if (previous != null && !previous.hasValue && next.hasValue) {
+        _refreshReminderSchedule();
+      }
+    });
     final subscriptionsState = ref.watch(subscriptionControllerProvider);
     return subscriptionsState.when(
       loading: () => const Scaffold(
@@ -419,7 +468,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: AppColors.brightGreen, size: 36),
+              const Icon(
+                Icons.error_outline,
+                color: AppColors.brightGreen,
+                size: 36,
+              ),
               const SizedBox(height: 14),
               Text(
                 isCorruptData
@@ -484,7 +537,11 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
         bottom: false,
         child: Column(
           children: [
-            SubscriptionsHeader(name: widget.name, onAdd: _openAddSheet),
+            SubscriptionsHeader(
+              name: widget.name,
+              onAdd: _openAddSheet,
+              onReminders: _openReminderSettings,
+            ),
             Expanded(
               child: IndexedStack(
                 index: _selectedTab,
@@ -516,7 +573,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
                     onCategoryChanged: (category) =>
                         setState(() => _selectedCategory = category),
                     sort: _selectedSort,
-                    onSortChanged: (sort) => setState(() => _selectedSort = sort),
+                    onSortChanged: (sort) =>
+                        setState(() => _selectedSort = sort),
                     onEdit: _openEditSheet,
                     onToggleRarelyUsed: _toggleRarelyUsed,
                     onDelete: _deleteSubscription,
@@ -544,6 +602,4 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
       ),
     );
   }
-
-
 }

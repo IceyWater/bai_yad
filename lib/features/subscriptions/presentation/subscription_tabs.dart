@@ -38,8 +38,9 @@ class PeriodPill extends StatelessWidget {
       border: Border.all(color: AppColors.toggleBorder),
       borderRadius: BorderRadius.circular(24),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
+    child: Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 4,
       children: [
         _PeriodPillButton(
           key: const Key('monthlyPeriodButton'),
@@ -75,10 +76,11 @@ class _PeriodPillButton extends StatelessWidget {
     onPressed: onTap,
     style: TextButton.styleFrom(
       foregroundColor: selected ? AppColors.white : AppColors.muted,
-      backgroundColor: selected ? AppColors.selectedControl : Colors.transparent,
+      backgroundColor: selected
+          ? AppColors.selectedControl
+          : Colors.transparent,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      minimumSize: Size.zero,
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(48, 48),
       shape: const StadiumBorder(),
     ),
     child: Text(

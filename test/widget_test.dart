@@ -168,7 +168,10 @@ void main() {
     );
     expect(spotify, findsOneWidget);
     expect(netflix, findsOneWidget);
-    expect(tester.getTopLeft(spotify).dy, lessThan(tester.getTopLeft(netflix).dy));
+    expect(
+      tester.getTopLeft(spotify).dy,
+      lessThan(tester.getTopLeft(netflix).dy),
+    );
     expect(find.text('PLDT Home Fiber'), findsNothing);
 
     await tester.enterText(

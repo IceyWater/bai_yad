@@ -54,11 +54,7 @@ void main() {
     final subscriptions = [
       entry(BillingCycle.monthly, 100),
       entry(BillingCycle.yearly, 1200),
-      entry(
-        BillingCycle.weekly,
-        100,
-        category: SubscriptionCategory.utilities,
-      ),
+      entry(BillingCycle.weekly, 100, category: SubscriptionCategory.utilities),
     ];
 
     expect(totalMonthlyCost(subscriptions), closeTo(633.333, 0.001));

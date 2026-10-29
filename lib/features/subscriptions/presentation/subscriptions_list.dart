@@ -54,34 +54,44 @@ class SubscriptionsList extends StatelessWidget {
             Row(
               children: [
                 const Text(
-                  'SORT BY',
+                  'Sort by',
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const Spacer(),
-                DropdownButton<SubscriptionSort>(
-                  key: const Key('subscriptionSortDropdown'),
-                  value: sort,
-                  underline: const SizedBox.shrink(),
-                  dropdownColor: AppColors.panelRaised,
-                  style: const TextStyle(
-                    color: AppColors.textMain,
-                    fontSize: 12,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: DropdownButton<SubscriptionSort>(
+                      key: const Key('subscriptionSortDropdown'),
+                      value: sort,
+                      isExpanded: true,
+                      underline: const SizedBox.shrink(),
+                      dropdownColor: AppColors.panelRaised,
+                      style: const TextStyle(
+                        color: AppColors.textMain,
+                        fontSize: 12,
+                      ),
+                      items: SubscriptionSort.values
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(
+                                value.label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) onSortChanged(value);
+                      },
+                    ),
                   ),
-                  items: SubscriptionSort.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(value.label),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) onSortChanged(value);
-                  },
                 ),
               ],
             ),
@@ -136,20 +146,19 @@ class SubscriptionsHeader extends StatelessWidget {
   const SubscriptionsHeader({
     required this.name,
     required this.onAdd,
+    required this.onReminders,
     super.key,
   });
 
   final String name;
   final VoidCallback onAdd;
+  final VoidCallback onReminders;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 64,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    decoration: const BoxDecoration(
-      border: Border(bottom: BorderSide(color: AppColors.subtleBorder)),
-    ),
-    child: Row(
+  Widget build(BuildContext context) {
+    final compactHeader = MediaQuery.sizeOf(context).width < 420;
+    final brand = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 31,
@@ -166,53 +175,96 @@ class SubscriptionsHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 9),
-        const Text(
-          AppStrings.appName,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-        ),
-        const Spacer(),
-        IconButton(
-          tooltip: 'About',
-          visualDensity: const VisualDensity(horizontal: -2, vertical: 0),
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 48),
-          padding: EdgeInsets.zero,
-          onPressed: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const AboutScreen())),
-          icon: const Icon(
-            Icons.info_outline_rounded,
-            color: AppColors.brightGreen,
-          ),
-        ),
-        OutlinedButton.icon(
-          key: const Key('addSubscriptionButton'),
-          onPressed: onAdd,
-          icon: const Icon(Icons.add, size: 17),
-          label: const Text('Add'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.brightGreen,
-            side: BorderSide(color: AppColors.mint.withValues(alpha: 0.35)),
-            backgroundColor: AppColors.mint.withValues(alpha: 0.08),
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-          ),
-        ),
-        const SizedBox(width: 4),
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: AppColors.avatarSurface,
+        Flexible(
           child: Text(
-            nameInitials(name),
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: AppColors.avatarText,
-            ),
+            AppStrings.appName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),
         ),
       ],
-    ),
-  );
+    );
+    final actions = [
+      IconButton(
+        key: const Key('reminderSettingsButton'),
+        tooltip: 'Renewal reminders',
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        padding: EdgeInsets.zero,
+        onPressed: onReminders,
+        icon: const Icon(
+          Icons.notifications_outlined,
+          color: AppColors.brightGreen,
+        ),
+      ),
+      IconButton(
+        tooltip: 'About',
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        padding: EdgeInsets.zero,
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const AboutScreen()),
+        ),
+        icon: const Icon(
+          Icons.info_outline_rounded,
+          color: AppColors.brightGreen,
+        ),
+      ),
+      OutlinedButton.icon(
+        key: const Key('addSubscriptionButton'),
+        onPressed: onAdd,
+        icon: const Icon(Icons.add, size: 17),
+        label: const Text('Add'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.brightGreen,
+          side: BorderSide(color: AppColors.mint.withValues(alpha: 0.35)),
+          backgroundColor: AppColors.mint.withValues(alpha: 0.08),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+      ),
+    ];
+    return Container(
+      constraints: BoxConstraints(minHeight: compactHeader ? 104 : 64),
+      padding: EdgeInsets.symmetric(horizontal: compactHeader ? 16 : 20),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.subtleBorder)),
+      ),
+      child: compactHeader
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(children: [Flexible(child: brand), const Spacer()]),
+                SizedBox(
+                  width: double.infinity,
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: actions,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                brand,
+                const Spacer(),
+                ...actions,
+                const SizedBox(width: 4),
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.avatarSurface,
+                  child: Text(
+                    nameInitials(name),
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.avatarText,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
 }
 
 class _SearchField extends StatelessWidget {
@@ -365,15 +417,21 @@ class _SubscriptionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Column(
+              SizedBox(
+                width: 90,
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    entry.amountLabel,
-                    style: const TextStyle(
-                      color: AppColors.textMain,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      entry.amountLabel,
+                      style: const TextStyle(
+                        color: AppColors.textMain,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   Text(
@@ -384,6 +442,7 @@ class _SubscriptionCard extends StatelessWidget {
                     ),
                   ),
                 ],
+                ),
               ),
             ],
           ),
@@ -431,7 +490,6 @@ class _SubscriptionCard extends StatelessWidget {
                   key: Key('editSubscription-${entry.id}'),
                   tooltip: 'Edit ${entry.name}',
                   onPressed: onEdit,
-                  visualDensity: VisualDensity.compact,
                   icon: const Icon(
                     Icons.edit_outlined,
                     size: 17,
@@ -444,7 +502,6 @@ class _SubscriptionCard extends StatelessWidget {
                       ? 'Mark ${entry.name} as used'
                       : 'Mark ${entry.name} as rarely used',
                   onPressed: onToggleRarelyUsed,
-                  visualDensity: VisualDensity.compact,
                   icon: Icon(
                     entry.isRarelyUsed
                         ? Icons.flag_rounded
@@ -459,7 +516,6 @@ class _SubscriptionCard extends StatelessWidget {
                   key: Key('deleteSubscription-${entry.id}'),
                   tooltip: 'Remove ${entry.name}',
                   onPressed: onDelete,
-                  visualDensity: VisualDensity.compact,
                   icon: const Icon(
                     Icons.delete_outline_rounded,
                     size: 17,
@@ -518,7 +574,9 @@ class SubscriptionsNavigation extends StatelessWidget {
   ];
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    return Container(
     decoration: const BoxDecoration(
       color: AppColors.navigationSurface,
       border: Border(top: BorderSide(color: AppColors.lightBorder)),
@@ -526,7 +584,7 @@ class SubscriptionsNavigation extends StatelessWidget {
     child: SafeArea(
       top: false,
       child: SizedBox(
-        height: 64,
+        height: textScale > 1 ? 64 * textScale : 64,
         child: Row(
           children: List.generate(_items.length, (index) {
             final (icon, label) = _items[index];
@@ -545,6 +603,8 @@ class SubscriptionsNavigation extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       label,
+                      maxLines: 2,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: selected
@@ -561,5 +621,6 @@ class SubscriptionsNavigation extends StatelessWidget {
         ),
       ),
     ),
-  );
+    );
+  }
 }

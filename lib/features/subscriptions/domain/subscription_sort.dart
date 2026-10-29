@@ -21,23 +21,25 @@ List<Subscription> sortSubscriptions(
   final today = from ?? DateTime.now();
   entries.sort((first, second) {
     final comparison = switch (sort) {
-      SubscriptionSort.nextRenewal => nextRenewal(
-        first.anchorDate,
-        first.billingCycle,
-        from: today,
-      ).compareTo(
+      SubscriptionSort.nextRenewal =>
         nextRenewal(
-          second.anchorDate,
-          second.billingCycle,
+          first.anchorDate,
+          first.billingCycle,
           from: today,
+        ).compareTo(
+          nextRenewal(second.anchorDate, second.billingCycle, from: today),
         ),
+      SubscriptionSort.price => monthlyCost(
+        first,
+      ).compareTo(monthlyCost(second)),
+      SubscriptionSort.name => first.name.toLowerCase().compareTo(
+        second.name.toLowerCase(),
       ),
-      SubscriptionSort.price => monthlyCost(first).compareTo(monthlyCost(second)),
-      SubscriptionSort.name =>
-        first.name.toLowerCase().compareTo(second.name.toLowerCase()),
     };
     if (comparison != 0) return comparison;
-    final byName = first.name.toLowerCase().compareTo(second.name.toLowerCase());
+    final byName = first.name.toLowerCase().compareTo(
+      second.name.toLowerCase(),
+    );
     return byName != 0 ? byName : first.id.compareTo(second.id);
   });
   return entries;

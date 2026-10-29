@@ -106,10 +106,7 @@ void main() {
     test('uses stable date-only labels for today, tomorrow, and later', () {
       expect(renewalLabel(DateTime(2026, 10, 28, 23), today: today), 'Today');
       expect(renewalLabel(DateTime(2026, 10, 29), today: today), 'Tomorrow');
-      expect(
-        renewalLabel(DateTime(2026, 11, 2), today: today),
-        'In 5 days',
-      );
+      expect(renewalLabel(DateTime(2026, 11, 2), today: today), 'In 5 days');
       expect(renewalLabel(DateTime(2026, 10, 27), today: today), 'Overdue');
     });
   });

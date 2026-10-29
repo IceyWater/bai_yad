@@ -1,8 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/local_reminder_service.dart';
 import '../data/shared_preferences_subscription_repository.dart';
 import '../data/subscription_repository.dart';
 import '../domain/subscription.dart';
+import 'reminder_service.dart';
+
+final reminderServiceProvider = Provider<ReminderService>(
+  (ref) => LocalReminderService(),
+);
 
 final subscriptionRepositoryProvider = Provider<SubscriptionRepository>(
   (ref) => SharedPreferencesSubscriptionRepository(),

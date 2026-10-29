@@ -62,28 +62,37 @@ class HomeTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 3),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              formatPeso(total),
-              key: const Key('homeTotalAmount'),
-              style: const TextStyle(
-                fontSize: 30,
-                height: 1.2,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    formatPeso(total),
+                    key: const Key('homeTotalAmount'),
+                    style: const TextStyle(
+                      fontSize: 30,
+                      height: 1.2,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
               ),
             ),
             const SizedBox(width: 7),
-            Text(cadence, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            Text(
+              cadence,
+              style: const TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         PeriodPill(
           firstLabel: 'Monthly',
-          secondLabel: 'Yearly (${formatPeso(annualTotal)})',
+          secondLabel: 'Yearly',
           secondSelected: yearly,
           onFirst: () => onYearlyChanged(false),
           onSecond: () => onYearlyChanged(true),
@@ -132,23 +141,14 @@ class HomeTab extends StatelessWidget {
           ),
           const SizedBox(height: 18),
         ],
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'UPCOMING RENEWALS',
-              style: TextStyle(
-                color: AppColors.muted,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
-            ),
-            Text(
-              '${subscriptions.length} Active',
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
-            ),
-          ],
+        const Text(
+          'UPCOMING RENEWALS',
+          style: TextStyle(
+            color: AppColors.muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
         ),
         const SizedBox(height: 3),
         for (final renewal in renewals)
@@ -228,7 +228,7 @@ class _RarelyUsedSubscriptions extends StatelessWidget {
       borderRadius: BorderRadius.circular(13),
       border: Border.all(color: AppColors.warningBorder),
     ),
-      child: Column(
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -284,7 +284,10 @@ class _RarelyUsedSubscriptions extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 9),
                   minimumSize: const Size(48, 40),
                 ),
-                child: const Text('Mark as used', style: TextStyle(fontSize: 9)),
+                child: const Text(
+                  'Mark as used',
+                  style: TextStyle(fontSize: 9),
+                ),
               ),
             ],
           ),
@@ -342,14 +345,16 @@ class _HomeRenewalRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${entry.amountLabel} ${entry.billingCycle.label}',
+                  entry.billingCycle.label,
                   style: const TextStyle(color: AppColors.muted, fontSize: 10),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          Column(
+          SizedBox(
+            width: 82,
+            child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -369,19 +374,23 @@ class _HomeRenewalRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 3),
-              Text(
-                entry.amountLabel,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  entry.amountLabel,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
+            ),
           ),
           IconButton(
             tooltip: 'Remove ${entry.name}',
-            visualDensity: VisualDensity.compact,
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
             onPressed: onDelete,
             icon: const Icon(
               Icons.delete_outline,
