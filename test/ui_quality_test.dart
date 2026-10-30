@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:bai_yad/core/theme/app_theme.dart';
+import 'package:bai_yad/core/theme/app_colors.dart';
 import 'package:bai_yad/features/onboarding/profile_setup_screen.dart';
 import 'package:bai_yad/features/subscriptions/application/reminder_settings_provider.dart';
 import 'package:bai_yad/features/subscriptions/application/reminder_service.dart';
@@ -17,6 +18,8 @@ import 'package:bai_yad/features/subscriptions/domain/subscription.dart';
 import 'package:bai_yad/features/subscriptions/domain/subscription_category.dart';
 import 'package:bai_yad/features/subscriptions/presentation/home_tab.dart';
 import 'package:bai_yad/features/subscriptions/presentation/subscriptions_screen.dart';
+import 'package:bai_yad/features/subscriptions/presentation/subscriptions_list.dart';
+import 'package:bai_yad/features/subscriptions/presentation/subscription_tabs.dart';
 
 void main() {
   group('ProfileSetupScreen', () {
@@ -71,6 +74,110 @@ void main() {
   });
 
   group('Home tab', () {
+    testWidgets('keeps rarely used items calm and separated', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final rarelyUsed = [
+        _fixture(id: 'rare-one', name: '3333').copyWith(isRarelyUsed: true),
+        _fixture(id: 'rare-two', name: 'test').copyWith(isRarelyUsed: true),
+      ];
+
+      await _pumpHome(
+        tester,
+        size: const Size(390, 844),
+        textScale: 1,
+        subscriptions: rarelyUsed,
+        rarelyUsedSubscriptions: rarelyUsed,
+      );
+
+      final card = tester.widget<Container>(
+        find
+            .ancestor(
+              of: find.text('RARELY USED'),
+              matching: find.byType(Container),
+            )
+            .first,
+      );
+      expect((card.decoration! as BoxDecoration).color, AppColors.panel);
+      final firstItem = tester.getTopLeft(find.textContaining('3333 ·'));
+      final secondItem = tester.getTopLeft(find.textContaining('test ·'));
+      expect(secondItem.dy - firstItem.dy, greaterThan(45));
+
+      final markUsed = tester.widget<TextButton>(find.byType(TextButton).first);
+      expect(markUsed.style?.backgroundColor, isNull);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('shows annual total in a single-row period selector', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final categories = [
+        const CategorySpending(
+          name: 'Utilities & Fiber',
+          amount: 43,
+          color: Colors.green,
+        ),
+        const CategorySpending(
+          name: 'Software & Cloud',
+          amount: 35,
+          color: Colors.purple,
+        ),
+        const CategorySpending(
+          name: 'Streaming & Media',
+          amount: 22,
+          color: Colors.orange,
+        ),
+      ];
+      await _pumpHome(
+        tester,
+        size: const Size(390, 844),
+        textScale: 1,
+        subscriptions: [_fixture(amount: 3470.17)],
+        categories: categories,
+      );
+
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('homeTotalAmount')))
+            .textSpan!
+            .toPlainText(),
+        '₱3,470.17',
+      );
+      final annualLabel = tester.widget<RichText>(
+        find.descendant(
+          of: find.byKey(const Key('annualPeriodButton')),
+          matching: find.byType(RichText),
+        ),
+      );
+      expect(annualLabel.text.toPlainText(), 'Yearly (₱41,642)');
+      final selectorSize = tester.getSize(
+        find.byKey(const Key('homePeriodSelector')),
+      );
+      expect(selectorSize.width, lessThan(210));
+      expect(selectorSize.height, lessThan(55));
+      final totalRight = tester
+          .getRect(find.byKey(const Key('homeTotalAmount')))
+          .right;
+      final cadenceLeft = tester.getTopLeft(find.text('/mo')).dx;
+      expect((cadenceLeft - totalRight - 7).abs(), lessThan(1));
+      final legendTops = [
+        tester.getTopLeft(find.text('Utilities 43%')).dy,
+        tester.getTopLeft(find.text('Software 35%')).dy,
+        tester.getTopLeft(find.text('Media 22%')).dy,
+      ];
+      expect((legendTops[0] - legendTops[1]).abs(), lessThan(1));
+      expect((legendTops[1] - legendTops[2]).abs(), lessThan(1));
+
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('fits long names and large peso values at all target sizes', (
       tester,
     ) async {
@@ -87,10 +194,20 @@ void main() {
       for (final size in [const Size(320, 568), const Size(800, 1280)]) {
         tester.view.physicalSize = size;
         for (final scale in [1.5, 2.0]) {
-          await _pumpHome(tester, size: size, textScale: scale, subscriptions: subscriptions);
+          await _pumpHome(
+            tester,
+            size: size,
+            textScale: scale,
+            subscriptions: subscriptions,
+          );
           expect(find.text('TOTAL COMMITMENT'), findsOneWidget);
           final layoutError = tester.takeException();
-          expect(layoutError, isNull, reason: '$layoutError');
+          expect(
+            layoutError,
+            isNull,
+            reason:
+                '$size at text scale $scale: ${layoutError is FlutterError ? layoutError.toStringDeep() : layoutError}',
+          );
         }
       }
 
@@ -101,6 +218,70 @@ void main() {
   });
 
   group('Subscriptions tab', () {
+    testWidgets('keeps header compact and search clear action functional', (
+      tester,
+    ) async {
+      await _pumpShell(
+        tester,
+        size: const Size(390, 844),
+        textScale: 1,
+        subscriptions: [_fixture(name: 'Cloud Storage')],
+      );
+      await tester.tap(find.byKey(const Key('bottomNavSUBSCRIPTIONS')));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.getSize(find.byType(SubscriptionsHeader)).height,
+        lessThan(80),
+      );
+      final search = find.byKey(const Key('subscriptionSearchField'));
+      expect(
+        tester.getSize(find.byKey(const Key('addSubscriptionButton'))).height,
+        greaterThanOrEqualTo(44),
+      );
+      await tester.enterText(search, 'no match');
+      await tester.pumpAndSettle();
+      expect(find.text('No subscriptions found'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('clearSubscriptionSearchButton')));
+      await tester.pumpAndSettle();
+      expect(find.text('Cloud Storage'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('separates subscription rows and prioritizes names', (
+      tester,
+    ) async {
+      final subscriptions = [
+        _fixture(id: 'first', name: '3333', amount: 232),
+        _fixture(id: 'second', name: 'test', amount: 333),
+      ];
+      await _pumpShell(
+        tester,
+        size: const Size(390, 844),
+        textScale: 1,
+        subscriptions: subscriptions,
+      );
+      await tester.tap(find.byKey(const Key('bottomNavSUBSCRIPTIONS')));
+      await tester.pumpAndSettle();
+
+      final firstCard = tester.getRect(find.byKey(const ValueKey('first')));
+      final secondCard = tester.getRect(find.byKey(const ValueKey('second')));
+      expect(secondCard.top - firstCard.bottom, 16);
+      expect(
+        tester.widget<Text>(find.text('3333')).style?.fontWeight,
+        FontWeight.w500,
+      );
+      expect(
+        tester.widget<Text>(find.text('₱232')).style?.fontWeight,
+        FontWeight.w400,
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('deleteSubscription-first'))).width,
+        greaterThanOrEqualTo(44),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('handles long names, duplicate names, and large amounts', (
       tester,
     ) async {
@@ -137,7 +318,10 @@ void main() {
             isNull,
             reason: 'list controls at $size and $scale',
           );
-          expect(find.byKey(const Key('subscriptionSearchField')), findsOneWidget);
+          expect(
+            find.byKey(const Key('subscriptionSearchField')),
+            findsOneWidget,
+          );
           await tester.drag(
             find.byKey(const PageStorageKey('subscriptionList')),
             const Offset(0, -1000),
@@ -198,9 +382,8 @@ Widget _profileApp(double textScale) => ProviderScope(
   child: MaterialApp(
     theme: AppTheme.dark,
     builder: (context, child) => MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: TextScaler.linear(textScale),
-      ),
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
       child: child!,
     ),
     home: ProfileSetupScreen(destinationBuilder: (_) => const SizedBox()),
@@ -214,9 +397,8 @@ Widget _launchApp(double textScale) => ProviderScope(
   child: MaterialApp(
     theme: AppTheme.dark,
     builder: (context, child) => MediaQuery(
-      data: MediaQuery.of(context).copyWith(
-        textScaler: TextScaler.linear(textScale),
-      ),
+      data: MediaQuery.of(context)
+          .copyWith(textScaler: TextScaler.linear(textScale)),
       child: child!,
     ),
     home: const LaunchScreen(),
@@ -248,9 +430,8 @@ Future<void> _pumpShell(
       child: MaterialApp(
         theme: AppTheme.dark,
         builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(context).copyWith(
-            textScaler: TextScaler.linear(textScale),
-          ),
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
           child: child!,
         ),
         home: const SubscriptionsScreen(name: 'Alex'),
@@ -265,6 +446,8 @@ Future<void> _pumpHome(
   required Size size,
   required double textScale,
   required List<Subscription> subscriptions,
+  List<CategorySpending> categories = const [],
+  List<Subscription> rarelyUsedSubscriptions = const [],
 }) async {
   tester.view.physicalSize = size;
   final monthlyTotal = totalMonthlyCost(subscriptions);
@@ -272,19 +455,18 @@ Future<void> _pumpHome(
     MaterialApp(
       theme: AppTheme.dark,
       builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(textScale),
-        ),
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
         child: child!,
       ),
       home: Scaffold(
         body: HomeTab(
           subscriptions: subscriptions,
-          rarelyUsedSubscriptions: const [],
+          rarelyUsedSubscriptions: rarelyUsedSubscriptions,
           renewals: upcomingRenewals(subscriptions),
           monthlyTotal: monthlyTotal,
           annualTotal: totalAnnualCost(subscriptions),
-          monthlyCategories: const [],
+          monthlyCategories: categories,
           yearly: false,
           onYearlyChanged: (_) {},
           onMarkUsed: (_) {},
@@ -354,13 +536,12 @@ Subscription _fixture({
   String id = 'fixture',
   String name = 'Example subscription',
   double amount = 100,
-}) =>
-    Subscription(
-      id: id,
-      name: name,
-      amount: amount,
-      billingCycle: BillingCycle.monthly,
-      category: SubscriptionCategory.streaming,
-      anchorDate: DateTime.now(),
-      createdAt: DateTime(2026, 1, 1),
-    );
+}) => Subscription(
+  id: id,
+  name: name,
+  amount: amount,
+  billingCycle: BillingCycle.monthly,
+  category: SubscriptionCategory.streaming,
+  anchorDate: DateTime.now(),
+  createdAt: DateTime(2026, 1, 1),
+);

@@ -255,10 +255,21 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Adobe Updated'), findsNothing);
-    await tester.tap(find.text('Undo'));
+    expect(find.text('Subscription deleted'), findsOneWidget);
+    expect(find.byKey(const Key('deleteSnackBarDismiss')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('deleteSnackBarUndo')));
     await tester.pumpAndSettle();
     expect(find.text('Adobe Updated'), findsOneWidget);
     expect(find.text('₱1,299.99'), findsOneWidget);
+
+    await tester.ensureVisible(deleteButton);
+    await tester.tap(deleteButton);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('deleteSnackBarDismiss')));
+    await tester.pumpAndSettle();
+    expect(find.text('Subscription deleted'), findsNothing);
+    expect(find.text('Adobe Updated'), findsNothing);
   });
 }
 

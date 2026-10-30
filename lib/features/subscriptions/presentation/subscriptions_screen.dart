@@ -81,102 +81,102 @@ class _LaunchScreenState extends ConsumerState<LaunchScreen> {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.mint.withValues(alpha: 0.88),
-                  borderRadius: BorderRadius.circular(23),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.mint.withValues(alpha: 0.28),
-                      blurRadius: 32,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    'B',
-                    style: TextStyle(
-                      color: AppColors.ink,
-                      fontSize: 44,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 28),
-              const Text(
-                AppStrings.appName,
-                style: TextStyle(
-                  fontSize: 38,
-                  fontWeight: FontWeight.w800,
-                  height: 1.1,
-                ),
-              ),
-              const SizedBox(height: 7),
-              const Text(
-                AppStrings.shortTagline,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 42),
-              if (_startupError == null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: const LinearProgressIndicator(
-                    value: 1,
-                    minHeight: 4,
-                    backgroundColor: AppColors.progressTrack,
-                    valueColor: AlwaysStoppedAnimation(AppColors.mint),
-                  ),
-                ),
-                const SizedBox(height: 13),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Vault ready. Launching...',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.mint.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(23),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.mint.withValues(alpha: 0.28),
+                            blurRadius: 32,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'B',
+                          style: TextStyle(
+                            color: AppColors.ink,
+                            fontSize: 44,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ),
-                    Text(
-                      '100%',
+                    const SizedBox(height: 28),
+                    const Text(
+                      AppStrings.appName,
                       style: TextStyle(
-                        color: AppColors.brightGreen,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 38,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
                       ),
                     ),
-                  ],
-                ),
-              ] else ...[
-                const Text(
-                  'Your saved profile could not be loaded.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() => _startupError = null);
-                    ref.invalidate(profileControllerProvider);
-                    _openDestination();
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
+                    const SizedBox(height: 7),
+                    const Text(
+                      AppStrings.shortTagline,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 42),
+                    if (_startupError == null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: const LinearProgressIndicator(
+                          value: 1,
+                          minHeight: 4,
+                          backgroundColor: AppColors.progressTrack,
+                          valueColor: AlwaysStoppedAnimation(AppColors.mint),
+                        ),
+                      ),
+                      const SizedBox(height: 13),
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Vault ready. Launching...',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '100%',
+                            style: TextStyle(
+                              color: AppColors.brightGreen,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      const Text(
+                        'Your saved profile could not be loaded.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _startupError = null);
+                          ref.invalidate(profileControllerProvider);
+                          _openDestination();
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -203,6 +203,8 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
   String? _selectedCategory;
   String _query = '';
   int _selectedTab = 0;
+  int _deleteNoticeGeneration = 0;
+  bool _deleteNoticeVisible = false;
   bool _homeYearly = false;
   bool _breakdownAnnualized = false;
   SubscriptionSort _selectedSort = SubscriptionSort.nextRenewal;
@@ -320,18 +322,56 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
       return;
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.removeCurrentSnackBar();
+    final generation = ++_deleteNoticeGeneration;
+    setState(() => _deleteNoticeVisible = true);
+    final notice = messenger.showSnackBar(
       SnackBar(
-        content: Text('${entry.name} removed'),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () => _restoreSubscription(entry, index),
+        content: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Subscription deleted',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+            TextButton(
+              key: const Key('deleteSnackBarUndo'),
+              onPressed: () {
+                messenger.hideCurrentSnackBar();
+                _restoreSubscription(entry, index);
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.brightGreen,
+                minimumSize: const Size(48, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: const Text('Undo'),
+            ),
+            TextButton(
+              key: const Key('deleteSnackBarDismiss'),
+              onPressed: messenger.hideCurrentSnackBar,
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textSoft,
+                minimumSize: const Size(48, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: const Text('Dismiss'),
+            ),
+          ],
         ),
+        duration: const Duration(seconds: 6),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         backgroundColor: AppColors.panelRaised,
         behavior: SnackBarBehavior.floating,
       ),
     );
+    notice.closed.then((_) {
+      if (!mounted || generation != _deleteNoticeGeneration) return;
+      setState(() => _deleteNoticeVisible = false);
+    });
   }
 
   Future<void> _restoreSubscription(Subscription entry, int index) async {
@@ -563,6 +603,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
                         setState(() => _homeYearly = value),
                     onMarkUsed: _markUsed,
                     onDelete: _deleteSubscription,
+                    deleteNoticeVisible: _deleteNoticeVisible,
                   ),
                   SubscriptionsList(
                     controller: _searchController,
@@ -578,6 +619,7 @@ class _SubscriptionsScreenState extends ConsumerState<SubscriptionsScreen> {
                     onEdit: _openEditSheet,
                     onToggleRarelyUsed: _toggleRarelyUsed,
                     onDelete: _deleteSubscription,
+                    deleteNoticeVisible: _deleteNoticeVisible,
                   ),
                   BreakdownTab(
                     annualized: _breakdownAnnualized,

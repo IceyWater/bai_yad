@@ -32,7 +32,7 @@ abstract final class AppColors {
   static const progressTrack = Color(0xFF17201E);
   static const toggleSurface = Color(0xFF131720);
   static const toggleBorder = Color(0xFF262B35);
-  static const selectedControl = Color(0xFF2A2D33);
+  static const selectedControl = Color(0xFF394653);
   static const controlBorder = Color(0xFF2A2D33);
   static const cardBorder = Color(0xFF1D2431);
   static const cardDivider = Color(0xFF1B202A);

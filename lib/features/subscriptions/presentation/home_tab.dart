@@ -23,6 +23,7 @@ class HomeTab extends StatelessWidget {
     required this.onYearlyChanged,
     required this.onMarkUsed,
     required this.onDelete,
+    this.deleteNoticeVisible = false,
     super.key,
   });
 
@@ -36,11 +37,14 @@ class HomeTab extends StatelessWidget {
   final ValueChanged<bool> onYearlyChanged;
   final ValueChanged<Subscription> onMarkUsed;
   final ValueChanged<Subscription> onDelete;
+  final bool deleteNoticeVisible;
 
   @override
   Widget build(BuildContext context) {
     final total = yearly ? annualTotal : monthlyTotal;
-    final cadence = yearly ? '/ yr' : '/ mo';
+    final formattedTotal = formatPeso(total);
+    final currencyIndex = formattedTotal.indexOf('₱');
+    final cadence = yearly ? '/yr' : '/mo';
     final categories = monthlyCategories
         .where((item) => item.amount > 0)
         .toList();
@@ -50,7 +54,7 @@ class HomeTab extends StatelessWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 17, 20, 25),
+      padding: EdgeInsets.fromLTRB(12, 17, 12, deleteNoticeVisible ? 96 : 25),
       children: [
         const Text(
           'TOTAL COMMITMENT',
@@ -62,37 +66,63 @@ class HomeTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 3),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    formatPeso(total),
-                    key: const Key('homeTotalAmount'),
-                    style: const TextStyle(
-                      fontSize: 30,
-                      height: 1.2,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+        Row(
+          children: [
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: formattedTotal.substring(0, currencyIndex),
+                          ),
+                          const TextSpan(
+                            text: '₱',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          TextSpan(
+                            text: formattedTotal.substring(currencyIndex + 1),
+                          ),
+                        ],
+                        style: const TextStyle(
+                          fontSize: 30,
+                          height: 1.2,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      key: const Key('homeTotalAmount'),
                     ),
-                  ),
+                    const SizedBox(width: 7),
+                    Text(
+                      cadence,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 7),
-            Text(
-              cadence,
-              style: const TextStyle(fontSize: 12, color: AppColors.muted),
             ),
           ],
         ),
         const SizedBox(height: 10),
         PeriodPill(
+          surfaceKey: const Key('homePeriodSelector'),
           firstLabel: 'Monthly',
           secondLabel: 'Yearly',
+          secondDetail: formatPeso(annualTotal.roundToDouble()),
           secondSelected: yearly,
           onFirst: () => onYearlyChanged(false),
           onSecond: () => onYearlyChanged(true),
@@ -105,7 +135,7 @@ class HomeTab extends StatelessWidget {
               for (final category in categories)
                 Expanded(
                   flex: math.max(
-                    1,
+                    6,
                     (category.amount /
                             (categoryTotal == 0 ? 1 : categoryTotal) *
                             100)
@@ -120,16 +150,20 @@ class HomeTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 9),
-        Wrap(
-          spacing: 10,
-          runSpacing: 7,
+        Row(
           children: [
             for (final category in categories)
-              _CategoryLegend(
-                category: category,
-                percent: categoryTotal == 0
-                    ? 0
-                    : category.amount / categoryTotal * 100,
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: _CategoryLegend(
+                    category: category,
+                    percent: categoryTotal == 0
+                        ? 0
+                        : category.amount / categoryTotal * 100,
+                  ),
+                ),
               ),
           ],
         ),
@@ -198,7 +232,7 @@ class _CategoryLegend extends StatelessWidget {
       const SizedBox(width: 4),
       Text(
         '${_shortCategory(category.name)} ${percent.round()}%',
-        style: const TextStyle(color: AppColors.textSoft, fontSize: 9),
+        style: const TextStyle(color: AppColors.textSoft, fontSize: 10),
       ),
     ],
   );
@@ -222,11 +256,11 @@ class _RarelyUsedSubscriptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
-      color: AppColors.warningSurface,
+      color: AppColors.panel,
       borderRadius: BorderRadius.circular(13),
-      border: Border.all(color: AppColors.warningBorder),
+      border: Border.all(color: AppColors.cardBorder),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,8 +271,8 @@ class _RarelyUsedSubscriptions extends StatelessWidget {
               width: 26,
               height: 26,
               decoration: BoxDecoration(
-                color: AppColors.warningIconSurface,
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.warningAccent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.notifications_active_outlined,
@@ -251,7 +285,7 @@ class _RarelyUsedSubscriptions extends StatelessWidget {
               child: Text(
                 'RARELY USED',
                 style: TextStyle(
-                  color: AppColors.warningText,
+                  color: AppColors.textSoft,
                   fontSize: 9,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.4,
@@ -260,36 +294,39 @@ class _RarelyUsedSubscriptions extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 8),
         for (final subscription in subscriptions)
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${subscription.name} · ${formatPeso(monthlyCost(subscription))}/mo potential',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.warningTextStrong,
-                    fontSize: 10,
-                    height: 1.4,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${subscription.name} · ${formatPeso(monthlyCost(subscription))}/mo potential',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textMain,
+                      fontSize: 10,
+                      height: 1.4,
+                    ),
                   ),
                 ),
-              ),
-              TextButton(
-                onPressed: () => onMarkUsed(subscription),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.warningButtonText,
-                  backgroundColor: AppColors.warningBorder,
-                  padding: const EdgeInsets.symmetric(horizontal: 9),
-                  minimumSize: const Size(48, 40),
+                TextButton(
+                  onPressed: () => onMarkUsed(subscription),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.brightGreen,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(48, 44),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Mark as used',
+                    style: TextStyle(fontSize: 10),
+                  ),
                 ),
-                child: const Text(
-                  'Mark as used',
-                  style: TextStyle(fontSize: 9),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
       ],
     ),
@@ -307,27 +344,25 @@ class _HomeRenewalRow extends StatelessWidget {
     final due = renewalLabel(renewal.date);
     final overdue = due == 'Overdue';
     final dueColor = overdue ? AppColors.danger : AppColors.brightGreen;
-    final dueBackground = overdue
-        ? AppColors.danger.withValues(alpha: 0.12)
-        : AppColors.mint.withValues(alpha: 0.10);
     return Container(
-      constraints: const BoxConstraints(minHeight: 66),
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.subtleBorder)),
       ),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: entry.color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
+              shape: BoxShape.circle,
               border: Border.all(color: entry.color.withValues(alpha: 0.25)),
             ),
-            child: Icon(entry.icon, size: 18, color: entry.color),
+            child: Icon(entry.icon, size: 20, color: entry.color),
           ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -340,61 +375,51 @@ class _HomeRenewalRow extends StatelessWidget {
                   style: const TextStyle(
                     color: AppColors.textMain,
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   entry.billingCycle.label,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 10),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 9),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 82,
-            child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: dueBackground,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
+                const SizedBox(height: 3),
+                Text(
                   due,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: dueColor,
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              const SizedBox(height: 3),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  entry.amountLabel,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 58,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                entry.amountLabel,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-            ],
             ),
           ),
           IconButton(
             tooltip: 'Remove ${entry.name}',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            padding: EdgeInsets.zero,
             onPressed: onDelete,
             icon: const Icon(
               Icons.delete_outline,
-              size: 15,
+              size: 17,
               color: AppColors.textMuted,
             ),
           ),
